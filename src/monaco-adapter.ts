@@ -7,7 +7,7 @@
  * @param {String} color - Font Color
  * @returns CSS Style Rules according to Parameters
  */
-let getCSS = function getCSS(clazz, bgColor, color) {
+const getCSS = (clazz: string, bgColor: string, color: string) => {
   return (
     '.' +
     clazz +
@@ -27,7 +27,7 @@ let getCSS = function getCSS(clazz, bgColor, color) {
  * @param {String} clazz - CSS Class Name
  * @param {String} css - CSS Style Rules
  */
-let addStyleRule = function addStyleRule(clazz, css) {
+const addStyleRule = (clazz, css) => {
   /** House Keeping */
   if (typeof document === 'undefined' || document === null) {
     return false;
