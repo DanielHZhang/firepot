@@ -1,7 +1,10 @@
 var firepad = firepad || { };
 
+export class TextOperation {
+
+}
+
 firepad.TextOperation = (function () {
-  'use strict';
   var TextOp = firepad.TextOp;
   var utils = firepad.utils;
 

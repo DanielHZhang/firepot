@@ -1,26 +1,5 @@
-import {editor, languages, Selection, IDisposable, Range} from 'monaco-editor';
+import {editor, Selection, IDisposable, Range} from 'monaco-editor';
 import {Cursor} from 'src/types';
-// import * as monaco from 'monaco-editor';
-
-/**
- * @param {String} clazz - CSS Class Name
- * @param {String} bgColor - Background Color
- * @param {String} color - Font Color
- * @returns CSS Style Rules according to Parameters
- */
-const getCSS = (clazz: string, bgColor: string, color: string) => {
-  return (
-    '.' +
-    clazz +
-    ' {\n  position: relative;\n' +
-    'background-color: ' +
-    bgColor +
-    ';\n' +
-    'border-left: 2px solid ' +
-    color +
-    ';\n}'
-  );
-};
 
 export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
@@ -31,30 +10,19 @@ export class MonacoAdapter {
   public otherCursors: Cursor[] = [];
   public addedStyleRules: string[] = [];
   public ignoreChanges: boolean = false;
-  public changeHandler: IDisposable;
-  public didBlurHandler: IDisposable;
-  public didFocusHandler: IDisposable;
-  public didChangeCursorPositionHandler: IDisposable;
+  public disposables: IDisposable[];
 
   constructor(monacoInstance: editor.IStandaloneCodeEditor) {
     this.monaco = monacoInstance;
     this.monacoModel = this.monaco.getModel()!;
     this.lastDocLines = this.monacoModel.getLinesContent();
     this.lastCursorRange = this.monaco.getSelection();
-
-    /** Adapter Callback Functions */
-    this.onChange = this.onChange.bind(this);
-    this.onBlur = this.onBlur.bind(this);
-    this.onFocus = this.onFocus.bind(this);
-    this.onCursorActivity = this.onCursorActivity.bind(this);
-
-    /** Editor Callback Handler */
-    this.changeHandler = this.monaco.onDidChangeModelContent(this.onChange);
-    this.didBlurHandler = this.monaco.onDidBlurEditorWidget(this.onBlur);
-    this.didFocusHandler = this.monaco.onDidFocusEditorWidget(this.onFocus);
-    this.didChangeCursorPositionHandler = this.monaco.onDidChangeCursorPosition(
-      this.onCursorActivity
-    );
+    this.disposables = [
+      this.monaco.onDidChangeModelContent(this.onChange),
+      this.monaco.onDidBlurEditorWidget(this.onBlur),
+      this.monaco.onDidFocusEditorWidget(this.onFocus),
+      this.monaco.onDidChangeCursorPosition(this.onCursorActivity),
+    ];
   }
 
   /** Creates style element in document head and pushed all the style rules */
@@ -72,12 +40,20 @@ export class MonacoAdapter {
     }
   }
 
+  /** Gets CSS class name for a cursor */
+  private getCSS = (className: string, bgColor: string, color: string) => {
+    return `
+     .${className} {
+       position: relative;
+       background-color: ${bgColor};
+       border-left: 2px solid ${color};
+     }
+   `;
+  };
+
   /** Clears an Instance of Editor Adapter */
   public detach() {
-    this.changeHandler.dispose();
-    this.didBlurHandler.dispose();
-    this.didFocusHandler.dispose();
-    this.didChangeCursorPositionHandler.dispose();
+    this.disposables.forEach((dis) => dis.dispose());
   }
 
   /** Get current cursor position */
@@ -148,9 +124,9 @@ export class MonacoAdapter {
     let className = 'other-client-selection-' + color.replace('#', '');
     if (cursor.position === cursor.selectionEnd) {
       className = className.replace('selection', 'cursor');
-      this.addStyleRule(className, getCSS(className, 'transparent', color));
+      this.addStyleRule(className, this.getCSS(className, 'transparent', color));
     } else {
-      this.addStyleRule(className, getCSS(className, color, color));
+      this.addStyleRule(className, this.getCSS(className, color, color));
     }
 
     /** Get co-ordinate position in Editor */
@@ -180,49 +156,38 @@ export class MonacoAdapter {
     };
   }
 
-  /**
-   * @method registerCallbacks - Assign callback functions to internal property
-   * @param {function[]} callbacks - Set of callback functions
-   */
+  /** Assign callback functions to internal property */
   public registerCallbacks(callbacks: Function[]) {
     this.callbacks = Object.assign({}, this.callbacks, callbacks);
   }
 
-  /**
-   * @method registerUndo
-   * @param {function} callback - Callback Handler for Undo Event
-   */
+  /** Callback Handler for Undo Event */
   public registerUndo(callback: Function) {
-    if (typeof callback === 'function') {
-      this.callbacks.undo = callback;
-    } else {
-      throw new Error(
-        'MonacoAdapter: registerUndo method expects a ' + 'callback function in parameter'
-      );
-    }
+    this.callbacks.undo = callback;
   }
 
-  /**
-   * @method registerRedo
-   * @param {function} callback - Callback Handler for Redo Event
-   */
+  /** Callback Handler for Redo Event */
   public registerRedo(callback: Function) {
-    if (typeof callback === 'function') {
-      this.callbacks.redo = callback;
-    } else {
-      throw new Error('registerRedo method expects a callback function in parameter');
-    }
+    this.callbacks.redo = callback;
   }
 
   /**
-   * @method operationFromMonacoChanges - Convert Monaco Changes to OT.js Ops
+   * @method operationFromMonacoChanges -
    * @param {Object} change - Change in Editor
    * @param {string} content - Last Editor Content
    * @param {Number} offset - Offset between changes of same event
    * @returns Pair of Operation and Inverse
+   *
+   */
+  /**
+   * Convert Monaco Changes to OT.js Ops
    * Note: OT.js Operation expects the cursor to be at the end of content
    */
-  public operationFromMonacoChanges(change, content: string, offset: number) {
+  public operationFromMonacoChanges(
+    change: editor.IModelContentChange,
+    content: string,
+    offset: number
+  ) {
     /** Change Informations */
     let text = change.text;
     let rangeLength = change.rangeLength;
@@ -282,9 +247,7 @@ export class MonacoAdapter {
    * @method onChange - OnChange Event Handler
    * @param {Object} event - OnChange Event Delegate
    */
-  public onChange(event) {
-    let _this = this;
-
+  public onChange = (event: editor.IModelContentChangedEvent) => {
     if (!this.ignoreChanges) {
       let content = this.lastDocLines.join(this.monacoModel.getEOL());
       let offset = 0;
@@ -297,16 +260,15 @@ export class MonacoAdapter {
 
       /** Reverse iterate all changes */
       event.changes.reverse().forEach((change) => {
-        let pair = _this.operationFromMonacoChanges(change, content, offset);
+        const pair = this.operationFromMonacoChanges(change, content, offset);
         offset += pair[0].targetLength - pair[0].baseLength;
-
-        _this.trigger.apply(_this, ['change'].concat(pair));
+        this.trigger.apply(this, ['change'].concat(pair));
       });
 
       /** Update Editor Content */
       this.lastDocLines = this.monacoModel.getLinesContent();
     }
-  }
+  };
 
   /**
    * @method trigger - Event Handler
@@ -336,21 +298,21 @@ export class MonacoAdapter {
   }
 
   /** Blur event handler */
-  public onBlur() {
+  public onBlur = () => {
     if (this.monaco.getSelection()?.isEmpty()) {
       this.trigger('blur');
     }
-  }
+  };
 
   /** Focus event handler */
-  public onFocus() {
+  public onFocus = () => {
     this.trigger('focus');
-  }
+  };
 
   /** CursorActivity event handler */
-  public onCursorActivity() {
+  public onCursorActivity = () => {
     setTimeout(() => this.trigger('cursorActivity'), 1);
-  }
+  };
 
   /**
    * @method applyOperation
@@ -406,7 +368,7 @@ export class MonacoAdapter {
    * @method invertOperation
    * @param {Operation} operation - OT.js Operation Object
    */
-  public invertOperation(operation) {
-    operation.invert(this.getValue());
+  public invertOperation(operation: any) {
+    operation.invert(this.monaco.getValue());
   }
 }
