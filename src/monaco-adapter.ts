@@ -1,4 +1,5 @@
-import {editor, languages, Selection, IDisposable} from 'monaco-editor';
+import {editor, languages, Selection, IDisposable, Range} from 'monaco-editor';
+import {Cursor} from 'src/types';
 // import * as monaco from 'monaco-editor';
 
 /**
@@ -21,37 +22,15 @@ const getCSS = (clazz: string, bgColor: string, color: string) => {
   );
 };
 
-/**
- * @function addStyleRule - For Internal Usage Only
- * @desc Creates style element in document head and pushed all the style rules
- * @param {String} clazz - CSS Class Name
- * @param {String} css - CSS Style Rules
- */
-const addStyleRule = (clazz: string, css: string) => {
-  /** House Keeping */
-  if (typeof document === 'undefined' || document === null) {
-    return;
-  }
-
-  /** Add style rules only once */
-  if (this.addedStyleRules.indexOf(clazz) === -1) {
-    let styleElement = document.createElement('style');
-    let styleSheet = document.createTextNode(css);
-    styleElement.appendChild(styleSheet);
-    document.head.appendChild(styleElement);
-    this.addedStyleRules.push(clazz);
-  }
-};
-
-class MonAdapter {
+export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
   public monacoModel: editor.ITextModel;
   public lastDocLines: string[];
   public lastCursorRange: Selection | null;
-  public callbacks = {};
-  public otherCursors = [];
-  public addedStyleRules = [];
-  public ignoreChanges = false;
+  public callbacks: Record<any, any> = {};
+  public otherCursors: Cursor[] = [];
+  public addedStyleRules: string[] = [];
+  public ignoreChanges: boolean = false;
   public changeHandler: IDisposable;
   public didBlurHandler: IDisposable;
   public didFocusHandler: IDisposable;
@@ -76,6 +55,21 @@ class MonAdapter {
     this.didChangeCursorPositionHandler = this.monaco.onDidChangeCursorPosition(
       this.onCursorActivity
     );
+  }
+
+  /** Creates style element in document head and pushed all the style rules */
+  private addStyleRule(clazz: string, css: string) {
+    if (typeof document === 'undefined' || document === null) {
+      return;
+    }
+    /** Add style rules only once */
+    if (this.addedStyleRules.indexOf(clazz) === -1) {
+      const styleElement = document.createElement('style');
+      const styleSheet = document.createTextNode(css);
+      styleElement.appendChild(styleSheet);
+      document.head.appendChild(styleElement);
+      this.addedStyleRules.push(clazz);
+    }
   }
 
   /** Clears an Instance of Editor Adapter */
@@ -112,40 +106,24 @@ class MonAdapter {
     return new firepad.Cursor(start, end);
   }
 
-  /**
-   * @method setCursor - Set Selection on Monaco Editor Instance
-   * @param {Object} cursor - Cursor Position (start and end)
-   * @param {Number} cursor.position - Starting Position of the Cursor
-   * @param {Number} cursor.selectionEnd - Ending Position of the Cursor
-   */
-  public setCursor(cursor) {
-    let position = cursor.position;
-    let selectionEnd = cursor.selectionEnd;
-    let start = this.monacoModel.getPositionAt(position);
-    let end = this.monacoModel.getPositionAt(selectionEnd);
+  /** Set Selection on Monaco Editor Instance */
+  public setCursor(cursor: Cursor) {
+    let start = this.monacoModel.getPositionAt(cursor.position);
+    let end = this.monacoModel.getPositionAt(cursor.selectionEnd);
 
     /** If selection is inversed */
-    if (position > selectionEnd) {
+    if (cursor.position > cursor.selectionEnd) {
       let _ref = [end, start];
       start = _ref[0];
       end = _ref[1];
     }
 
     /** Create Selection in the Editor */
-    this.monaco.setSelection(
-      new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column)
-    );
+    this.monaco.setSelection(new Range(start.lineNumber, start.column, end.lineNumber, end.column));
   }
 
-  /**
-   * @method setOtherCursor - Set Remote Selection on Monaco Editor
-   * @param {Number} cursor.position - Starting Position of the Selection
-   * @param {Number} cursor.selectionEnd - Ending Position of the Selection
-   * @param {String} color - Hex Color codes for Styling
-   * @param {any} clientID - ID number of the Remote Client
-   */
-  public setOtherCursor(cursor, color, clientID) {
-    /** House Keeping */
+  /** Set Remote Selection on Monaco Editor */
+  public setOtherCursor(cursor: Cursor, color: string, clientID: string | number) {
     if (
       typeof cursor !== 'object' ||
       typeof cursor.position !== 'number' ||
@@ -153,65 +131,34 @@ class MonAdapter {
     ) {
       return false;
     }
-
     if (typeof color !== 'string' || !color.match(/^#[a-fA-F0-9]{3,6}$/)) {
       return false;
     }
-
-    /** Extract Positions */
-    let position = cursor.position;
-    let selectionEnd = cursor.selectionEnd;
-
-    if (position < 0 || selectionEnd < 0) {
+    if (cursor.position < 0 || cursor.selectionEnd < 0) {
       return false;
     }
-
-    /** Fetch Client Cursor Information */
-    let otherCursor = this.otherCursors.find(function(cursor) {
-      return cursor.clientID === clientID;
-    });
-
-    /** Initialize empty array, if client does not exist */
-    if (!otherCursor) {
-      otherCursor = {
-        clientID: clientID,
-        decoration: [],
-      };
-      this.otherCursors.push(otherCursor);
-    }
+    /** Fetch Client Cursor Information or Initialize empty array, if client does not exist */
+    let otherCursor: Cursor = this.otherCursors.find((c) => c.clientID === clientID) || {
+      clientID: clientID,
+      decoration: [],
+    };
 
     /** Remove Earlier Decorations, if any, or initialize empty decor */
-    otherCursor.decoration = this.monaco.deltaDecorations(otherCursor.decoration, []);
-    let clazz = 'other-client-selection-' + color.replace('#', '');
-    let css, ret;
-
-    if (position === selectionEnd) {
-      /** Show only cursor */
-      clazz = clazz.replace('selection', 'cursor');
-
-      /** Generate Style rules and add them to document */
-      css = getCSS(clazz, 'transparent', color);
-      ret = addStyleRule.call(this, clazz, css);
+    otherCursor.decoration = this.monaco.deltaDecorations(otherCursor.decoration!, []);
+    let className = 'other-client-selection-' + color.replace('#', '');
+    if (cursor.position === cursor.selectionEnd) {
+      className = className.replace('selection', 'cursor');
+      this.addStyleRule(className, getCSS(className, 'transparent', color));
     } else {
-      /** Generate Style rules and add them to document */
-      css = getCSS(clazz, color, color);
-      ret = addStyleRule.call(this, clazz, css);
-    }
-
-    /** Return if failed to add css */
-    if (ret == false) {
-      console.log(
-        'Monaco Adapter: Failed to add some css style.\n' +
-          "Please make sure you're running on supported environment."
-      );
+      this.addStyleRule(className, getCSS(className, color, color));
     }
 
     /** Get co-ordinate position in Editor */
-    let start = this.monacoModel.getPositionAt(position);
-    let end = this.monacoModel.getPositionAt(selectionEnd);
+    let start = this.monacoModel.getPositionAt(cursor.position);
+    let end = this.monacoModel.getPositionAt(cursor.selectionEnd);
 
     /** Selection is inversed */
-    if (position > selectionEnd) {
+    if (cursor.position > cursor.selectionEnd) {
       let _ref = [end, start];
       start = _ref[0];
       end = _ref[1];
@@ -220,18 +167,15 @@ class MonAdapter {
     /** Add decoration to the Editor */
     otherCursor.decoration = this.monaco.deltaDecorations(otherCursor.decoration, [
       {
-        range: new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column),
-        options: {
-          className: clazz,
-        },
+        range: new Range(start.lineNumber, start.column, end.lineNumber, end.column),
+        options: {className},
       },
     ]);
 
     /** Clear cursor method */
-    let _this = this;
     return {
-      clear: function clear() {
-        otherCursor.decoration = _this.monaco.deltaDecorations(otherCursor.decoration, []);
+      clear: () => {
+        otherCursor.decoration = this.monaco.deltaDecorations(otherCursor.decoration!, []);
       },
     };
   }
@@ -240,7 +184,7 @@ class MonAdapter {
    * @method registerCallbacks - Assign callback functions to internal property
    * @param {function[]} callbacks - Set of callback functions
    */
-  public registerCallbacks(callbacks) {
+  public registerCallbacks(callbacks: Function[]) {
     this.callbacks = Object.assign({}, this.callbacks, callbacks);
   }
 
@@ -248,7 +192,7 @@ class MonAdapter {
    * @method registerUndo
    * @param {function} callback - Callback Handler for Undo Event
    */
-  public registerUndo(callback) {
+  public registerUndo(callback: Function) {
     if (typeof callback === 'function') {
       this.callbacks.undo = callback;
     } else {
@@ -262,13 +206,11 @@ class MonAdapter {
    * @method registerRedo
    * @param {function} callback - Callback Handler for Redo Event
    */
-  public registerRedo(callback) {
+  public registerRedo(callback: Function) {
     if (typeof callback === 'function') {
       this.callbacks.redo = callback;
     } else {
-      throw new Error(
-        'MonacoAdapter: registerRedo method expects a ' + 'callback function in parameter'
-      );
+      throw new Error('registerRedo method expects a callback function in parameter');
     }
   }
 
@@ -280,7 +222,7 @@ class MonAdapter {
    * @returns Pair of Operation and Inverse
    * Note: OT.js Operation expects the cursor to be at the end of content
    */
-  public operationFromMonacoChanges(change, content, offset) {
+  public operationFromMonacoChanges(change, content: string, offset: number) {
     /** Change Informations */
     let text = change.text;
     let rangeLength = change.rangeLength;
@@ -354,7 +296,7 @@ class MonAdapter {
       }
 
       /** Reverse iterate all changes */
-      event.changes.reverse().forEach(function(change) {
+      event.changes.reverse().forEach((change) => {
         let pair = _this.operationFromMonacoChanges(change, content, offset);
         offset += pair[0].targetLength - pair[0].baseLength;
 
@@ -393,25 +335,19 @@ class MonAdapter {
     action.apply(null, args);
   }
 
-  /**
-   * @method onBlur - Blur event handler
-   */
+  /** Blur event handler */
   public onBlur() {
     if (this.monaco.getSelection()?.isEmpty()) {
       this.trigger('blur');
     }
   }
 
-  /**
-   * @method onFocus - Focus event handler
-   */
+  /** Focus event handler */
   public onFocus() {
     this.trigger('focus');
   }
 
-  /**
-   * @method onCursorActivity - CursorActivity event handler
-   */
+  /** CursorActivity event handler */
   public onCursorActivity() {
     setTimeout(() => this.trigger('cursorActivity'), 1);
   }
@@ -429,18 +365,17 @@ class MonAdapter {
     let opsList = operation.ops;
     let index = 0;
 
-    let _this = this;
-    opsList.forEach(function(op) {
+    opsList.forEach((op) => {
       /** Retain Operation */
       if (op.isRetain()) {
         index += op.chars;
       } else if (op.isInsert()) {
         /** Insert Operation */
-        let pos = _this.monacoModel.getPositionAt(index);
+        let pos = this.monacoModel.getPositionAt(index);
 
-        _this.monaco.executeEdits('my-source', [
+        this.monaco.executeEdits('my-source', [
           {
-            range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
+            range: new Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
             text: op.text,
             forceMoveMarkers: true,
           },
@@ -449,12 +384,12 @@ class MonAdapter {
         index += op.text.length;
       } else if (op.isDelete()) {
         /** Delete Operation */
-        let from = _this.monacoModel.getPositionAt(index);
-        let to = _this.monacoModel.getPositionAt(index + op.chars);
+        let from = this.monacoModel.getPositionAt(index);
+        let to = this.monacoModel.getPositionAt(index + op.chars);
 
-        _this.monaco.executeEdits('my-source', [
+        this.monaco.executeEdits('my-source', [
           {
-            range: new monaco.Range(from.lineNumber, from.column, to.lineNumber, to.column),
+            range: new Range(from.lineNumber, from.column, to.lineNumber, to.column),
             text: '',
             forceMoveMarkers: true,
           },
