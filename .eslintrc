@@ -1,0 +1,135 @@
+{
+  "env": {
+    "es6": true
+  },
+  "extends": [
+    "prettier"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "ecmaVersion": 2019,
+    "project": "tsconfig.json",
+    "sourceType": "module"
+  },
+  "plugins": [
+    "@typescript-eslint"
+  ],
+  "rules": {
+    "@typescript-eslint/class-name-casing": "error",
+    "@typescript-eslint/consistent-type-assertions": [
+      "error",
+      {
+        "assertionStyle": "as"
+      }
+    ],
+    "@typescript-eslint/func-call-spacing": "error",
+    "@typescript-eslint/member-delimiter-style": [
+      "error",
+      {
+        "multiline": {
+          "delimiter": "semi",
+          "requireLast": true
+        },
+        "singleline": {
+          "delimiter": "semi",
+          "requireLast": false
+        }
+      }
+    ],
+    "@typescript-eslint/member-ordering": [
+      "error",
+      {
+        "default": [
+          "static-field",
+          "instance-field",
+          "constructor",
+          "static-method",
+          "instance-method"
+        ]
+      }
+    ],
+    "@typescript-eslint/no-empty-function": "error",
+    "@typescript-eslint/no-extra-parens": [
+      "error",
+      "functions"
+    ],
+    "@typescript-eslint/no-inferrable-types": [
+      "error",
+      {
+        "ignoreParameters": true,
+        "ignoreProperties": true
+      }
+    ],
+    "@typescript-eslint/no-misused-new": "error",
+    "@typescript-eslint/no-unnecessary-qualifier": "error",
+    "@typescript-eslint/no-unnecessary-type-arguments": "error",
+    "@typescript-eslint/no-unnecessary-type-assertion": "error",
+    "@typescript-eslint/no-use-before-define": "error",
+    "@typescript-eslint/no-useless-constructor": "error",
+    "@typescript-eslint/require-await": "error",
+    "@typescript-eslint/restrict-plus-operands": "error",
+    "@typescript-eslint/semi": "error",
+    "@typescript-eslint/type-annotation-spacing": "error",
+    "@typescript-eslint/unified-signatures": "error",
+    "arrow-parens": [
+      "error",
+      "always"
+    ],
+    "curly": "error",
+    "default-case": "error",
+    "dot-notation": "error",
+    "eol-last": "error",
+    "eqeqeq": [
+      "error",
+      "always"
+    ],
+    "func-call-spacing": "off",
+    "guard-for-in": "off",
+    "jsx-quotes": [
+      "error",
+      "prefer-single"
+    ],
+    "max-len": [
+      "error",
+      {
+        "code": 100,
+        "ignoreComments": true
+      }
+    ],
+    "no-bitwise": "off",
+    "no-caller": "error",
+    "no-console": "off",
+    "no-debugger": "error",
+    "no-duplicate-case": "error",
+    "no-duplicate-imports": "error",
+    "no-empty": "error",
+    "no-empty-functions": "off",
+    "no-eval": "error",
+    "no-fallthrough": "error",
+    "no-multiple-empty-lines": "error",
+    "no-new-wrappers": "error",
+    "no-return-await": "error",
+    "no-unused-labels": "error",
+    "quotes": [
+      "error",
+      "single",
+      {
+        "avoidEscape": true
+      }
+    ],
+    "radix": "error",
+    "semi": "off",
+    "spaced-comment": [
+      "error",
+      "always"
+    ]
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  }
+}

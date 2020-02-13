@@ -1,0 +1,53 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "checkJs": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "lib": [
+      "dom",
+      "es2015",
+      "es2016",
+      "es2017",
+      "es2018",
+      "es2019",
+      "esnext"
+    ],
+    "module": "esnext",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": false,
+    "noUnusedLocals": true,
+    "outDir": "build",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "strictBindCallApply": true,
+    "strictNullChecks": true,
+    "target": "es6",
+  },
+  "exclude": [
+    ".awcache",
+    ".idea",
+    ".vscode",
+    ".next",
+    "node_modules",
+    "temp",
+    "generated"
+  ],
+  "include": [
+    "server",
+    "shared",
+    "src",
+    "next.config.js"
+  ]
+}
