@@ -1,7 +1,7 @@
-'use strict';
+import {editor, languages, Selection, IDisposable} from 'monaco-editor';
+// import * as monaco from 'monaco-editor';
 
 /**
- * @function getCSS - For Internal Usage Only
  * @param {String} clazz - CSS Class Name
  * @param {String} bgColor - Background Color
  * @param {String} color - Font Color
@@ -27,10 +27,10 @@ const getCSS = (clazz: string, bgColor: string, color: string) => {
  * @param {String} clazz - CSS Class Name
  * @param {String} css - CSS Style Rules
  */
-const addStyleRule = (clazz, css) => {
+const addStyleRule = (clazz: string, css: string) => {
   /** House Keeping */
   if (typeof document === 'undefined' || document === null) {
-    return false;
+    return;
   }
 
   /** Add style rules only once */
@@ -43,53 +43,25 @@ const addStyleRule = (clazz, css) => {
   }
 };
 
-/**
- * Monaco Adapter
- * Create Pipe between Firebase and Monaco Text Editor
- */
-let MonacoAdapter = (function() {
-  /**
-   * @constructor MonacoEditor
-   * @param {MonacoEditor} monacoInstance - Editor Instance
-   * @prop {MonacoEditor} monaco - Monaco Instance passed as Parameter
-   * @prop {MonacoITextModel} monacoModel - Data Model of the Monaco Instance
-   * @prop {string[]} lastDocLines - Text for all Lines in the Editor
-   * @prop {MonacoSelection} lastCursorRange - Primary Selection of the Editor
-   * @prop {function} onChange - Change Event Handler bound Local Object
-   * @prop {function} onBlur - Blur Event Handler bound Local Object
-   * @prop {function} onFocus - Focus Event Handler bound Local Object
-   * @prop {function} onCursorActivity - Cursor Activity Handler bound Local Object
-   * @prop {Boolean} ignoreChanges - Should Avoid OnChange Event Handling
-   * @prop {MonacoIDisposable} changeHandler - Event Handler for Model Content Change
-   * @prop {MonacoIDisposable} didBlurHandler - Event Handler for Focus Lost on Editor Text/Widget
-   * @prop {MonacoIDisposable} didFocusHandler - Event Handler for Focus Gain on Editor Text/Widget
-   * @prop {MonacoIDisposable} didChangeCursorPositionHandler - Event Handler for Cursor Position Change
-   */
-  function MonacoAdapter(monacoInstance) {
-    /** House Keeping */
-    if (
-      monacoInstance !== null &&
-      typeof global !== 'undefined' &&
-      global.monaco &&
-      !monacoInstance instanceof global.monaco
-    ) {
-      throw new Error(
-        'MonacoAdapter: Incorrect Parameter Recieved in constructor, ' +
-          'expected valid Monaco Instance'
-      );
-    }
+class MonAdapter {
+  public monaco: editor.IStandaloneCodeEditor;
+  public monacoModel: editor.ITextModel;
+  public lastDocLines: string[];
+  public lastCursorRange: Selection | null;
+  public callbacks = {};
+  public otherCursors = [];
+  public addedStyleRules = [];
+  public ignoreChanges = false;
+  public changeHandler: IDisposable;
+  public didBlurHandler: IDisposable;
+  public didFocusHandler: IDisposable;
+  public didChangeCursorPositionHandler: IDisposable;
 
-    /** Monaco Member letiables */
+  constructor(monacoInstance: editor.IStandaloneCodeEditor) {
     this.monaco = monacoInstance;
-    this.monacoModel = this.monaco.getModel();
+    this.monacoModel = this.monaco.getModel()!;
     this.lastDocLines = this.monacoModel.getLinesContent();
     this.lastCursorRange = this.monaco.getSelection();
-
-    /** Monaco Editor Configurations */
-    this.callbacks = {};
-    this.otherCursors = [];
-    this.addedStyleRules = [];
-    this.ignoreChanges = false;
 
     /** Adapter Callback Functions */
     this.onChange = this.onChange.bind(this);
@@ -106,21 +78,16 @@ let MonacoAdapter = (function() {
     );
   }
 
-  /**
-   * @method detach - Clears an Instance of Editor Adapter
-   */
-  MonacoAdapter.prototype.detach = function detach() {
+  /** Clears an Instance of Editor Adapter */
+  public detach() {
     this.changeHandler.dispose();
     this.didBlurHandler.dispose();
     this.didFocusHandler.dispose();
     this.didChangeCursorPositionHandler.dispose();
-  };
+  }
 
-  /**
-   * @method getCursor - Get current cursor position
-   * @returns Firepad Cursor object
-   */
-  MonacoAdapter.prototype.getCursor = function getCursor() {
+  /** Get current cursor position */
+  public getCursor() {
     let selection = this.monaco.getSelection();
 
     /** Fallback to last cursor change */
@@ -143,7 +110,7 @@ let MonacoAdapter = (function() {
 
     /** Return cursor position */
     return new firepad.Cursor(start, end);
-  };
+  }
 
   /**
    * @method setCursor - Set Selection on Monaco Editor Instance
@@ -151,7 +118,7 @@ let MonacoAdapter = (function() {
    * @param {Number} cursor.position - Starting Position of the Cursor
    * @param {Number} cursor.selectionEnd - Ending Position of the Cursor
    */
-  MonacoAdapter.prototype.setCursor = function setCursor(cursor) {
+  public setCursor(cursor) {
     let position = cursor.position;
     let selectionEnd = cursor.selectionEnd;
     let start = this.monacoModel.getPositionAt(position);
@@ -168,7 +135,7 @@ let MonacoAdapter = (function() {
     this.monaco.setSelection(
       new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column)
     );
-  };
+  }
 
   /**
    * @method setOtherCursor - Set Remote Selection on Monaco Editor
@@ -177,7 +144,7 @@ let MonacoAdapter = (function() {
    * @param {String} color - Hex Color codes for Styling
    * @param {any} clientID - ID number of the Remote Client
    */
-  MonacoAdapter.prototype.setOtherCursor = function setOtherCursor(cursor, color, clientID) {
+  public setOtherCursor(cursor, color, clientID) {
     /** House Keeping */
     if (
       typeof cursor !== 'object' ||
@@ -267,21 +234,21 @@ let MonacoAdapter = (function() {
         otherCursor.decoration = _this.monaco.deltaDecorations(otherCursor.decoration, []);
       },
     };
-  };
+  }
 
   /**
    * @method registerCallbacks - Assign callback functions to internal property
    * @param {function[]} callbacks - Set of callback functions
    */
-  MonacoAdapter.prototype.registerCallbacks = function registerCallbacks(callbacks) {
+  public registerCallbacks(callbacks) {
     this.callbacks = Object.assign({}, this.callbacks, callbacks);
-  };
+  }
 
   /**
    * @method registerUndo
    * @param {function} callback - Callback Handler for Undo Event
    */
-  MonacoAdapter.prototype.registerUndo = function registerUndo(callback) {
+  public registerUndo(callback) {
     if (typeof callback === 'function') {
       this.callbacks.undo = callback;
     } else {
@@ -289,13 +256,13 @@ let MonacoAdapter = (function() {
         'MonacoAdapter: registerUndo method expects a ' + 'callback function in parameter'
       );
     }
-  };
+  }
 
   /**
    * @method registerRedo
    * @param {function} callback - Callback Handler for Redo Event
    */
-  MonacoAdapter.prototype.registerRedo = function registerRedo(callback) {
+  public registerRedo(callback) {
     if (typeof callback === 'function') {
       this.callbacks.redo = callback;
     } else {
@@ -303,7 +270,7 @@ let MonacoAdapter = (function() {
         'MonacoAdapter: registerRedo method expects a ' + 'callback function in parameter'
       );
     }
-  };
+  }
 
   /**
    * @method operationFromMonacoChanges - Convert Monaco Changes to OT.js Ops
@@ -313,11 +280,7 @@ let MonacoAdapter = (function() {
    * @returns Pair of Operation and Inverse
    * Note: OT.js Operation expects the cursor to be at the end of content
    */
-  MonacoAdapter.prototype.operationFromMonacoChanges = function operationFromMonacoChanges(
-    change,
-    content,
-    offset
-  ) {
+  public operationFromMonacoChanges(change, content, offset) {
     /** Change Informations */
     let text = change.text;
     let rangeLength = change.rangeLength;
@@ -371,13 +334,13 @@ let MonacoAdapter = (function() {
     }
 
     return [change_op, inverse_op];
-  };
+  }
 
   /**
    * @method onChange - OnChange Event Handler
    * @param {Object} event - OnChange Event Delegate
    */
-  MonacoAdapter.prototype.onChange = function onChange(event) {
+  public onChange(event) {
     let _this = this;
 
     if (!this.ignoreChanges) {
@@ -401,14 +364,14 @@ let MonacoAdapter = (function() {
       /** Update Editor Content */
       this.lastDocLines = this.monacoModel.getLinesContent();
     }
-  };
+  }
 
   /**
    * @method trigger - Event Handler
    * @param {string} event - Event name
    * @param  {...any} args - Callback arguments
    */
-  MonacoAdapter.prototype.trigger = function trigger(event) {
+  public trigger(event) {
     if (!this.callbacks.hasOwnProperty(event)) {
       return;
     }
@@ -428,40 +391,36 @@ let MonacoAdapter = (function() {
     }
 
     action.apply(null, args);
-  };
+  }
 
   /**
    * @method onBlur - Blur event handler
    */
-  MonacoAdapter.prototype.onBlur = function onBlur() {
-    if (this.monaco.getSelection().isEmpty()) {
+  public onBlur() {
+    if (this.monaco.getSelection()?.isEmpty()) {
       this.trigger('blur');
     }
-  };
+  }
 
   /**
    * @method onFocus - Focus event handler
    */
-  MonacoAdapter.prototype.onFocus = function onFocus() {
+  public onFocus() {
     this.trigger('focus');
-  };
+  }
 
   /**
    * @method onCursorActivity - CursorActivity event handler
    */
-  MonacoAdapter.prototype.onCursorActivity = function onCursorActivity() {
-    let _this = this;
-
-    setTimeout(function() {
-      return _this.trigger('cursorActivity');
-    }, 1);
-  };
+  public onCursorActivity() {
+    setTimeout(() => this.trigger('cursorActivity'), 1);
+  }
 
   /**
    * @method applyOperation
    * @param {Operation} operation - OT.js Operation Object
    */
-  MonacoAdapter.prototype.applyOperation = function applyOperation(operation) {
+  public applyOperation(operation) {
     if (!operation.isNoop()) {
       this.ignoreChanges = true;
     }
@@ -506,17 +465,13 @@ let MonacoAdapter = (function() {
     /** Update Editor Content and Reset Config */
     this.lastDocLines = this.monacoModel.getLinesContent();
     this.ignoreChanges = false;
-  };
+  }
 
   /**
    * @method invertOperation
    * @param {Operation} operation - OT.js Operation Object
    */
-  MonacoAdapter.prototype.invertOperation = function invertOperation(operation) {
+  public invertOperation(operation) {
     operation.invert(this.getValue());
-  };
-
-  return MonacoAdapter;
-})(); /** Export Module */
-
-firepad.MonacoAdapter = MonacoAdapter;
+  }
+}
