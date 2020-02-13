@@ -1,8 +1,8 @@
-var firepad = firepad || { };
+var firepad = firepad || {};
+
+export class TextOp {}
 
 firepad.TextOp = (function() {
-  var utils = firepad.utils;
-
   // Operation are essentially lists of ops. There are three types of ops:
   //
   // * Retain ops: Advance the cursor position by a given number of characters.
@@ -19,37 +19,49 @@ firepad.TextOp = (function() {
     if (type === 'insert') {
       this.text = arguments[1];
       utils.assert(typeof this.text === 'string');
-      this.attributes = arguments[2] || { };
-      utils.assert (typeof this.attributes === 'object');
+      this.attributes = arguments[2] || {};
+      utils.assert(typeof this.attributes === 'object');
     } else if (type === 'delete') {
       this.chars = arguments[1];
       utils.assert(typeof this.chars === 'number');
     } else if (type === 'retain') {
       this.chars = arguments[1];
       utils.assert(typeof this.chars === 'number');
-      this.attributes = arguments[2] || { };
-      utils.assert (typeof this.attributes === 'object');
+      this.attributes = arguments[2] || {};
+      utils.assert(typeof this.attributes === 'object');
     }
   }
 
-  TextOp.prototype.isInsert = function() { return this.type === 'insert'; };
-  TextOp.prototype.isDelete = function() { return this.type === 'delete'; };
-  TextOp.prototype.isRetain = function() { return this.type === 'retain'; };
+  TextOp.prototype.isInsert = function() {
+    return this.type === 'insert';
+  };
+  TextOp.prototype.isDelete = function() {
+    return this.type === 'delete';
+  };
+  TextOp.prototype.isRetain = function() {
+    return this.type === 'retain';
+  };
 
   TextOp.prototype.equals = function(other) {
-    return (this.type === other.type &&
-        this.text === other.text &&
-        this.chars === other.chars &&
-        this.attributesEqual(other.attributes));
+    return (
+      this.type === other.type &&
+      this.text === other.text &&
+      this.chars === other.chars &&
+      this.attributesEqual(other.attributes)
+    );
   };
 
   TextOp.prototype.attributesEqual = function(otherAttributes) {
     for (var attr in this.attributes) {
-      if (this.attributes[attr] !== otherAttributes[attr]) { return false; }
+      if (this.attributes[attr] !== otherAttributes[attr]) {
+        return false;
+      }
     }
 
     for (attr in otherAttributes) {
-      if (this.attributes[attr] !== otherAttributes[attr]) { return false; }
+      if (this.attributes[attr] !== otherAttributes[attr]) {
+        return false;
+      }
     }
 
     return true;
