@@ -1,4 +1,4 @@
-export function makeEventEmitter(clazz: any, allowedEvents: any) {
+export function makeEventEmitter(clazz: any, allowedEvents: string[]) {
   clazz.prototype.allowedEvents_ = allowedEvents;
 
   clazz.prototype.on = function(eventType: string, callback: Function, context: any) {
@@ -49,7 +49,7 @@ export function setTextContent(e: HTMLElement, str: string) {
   e.appendChild(document.createTextNode(str));
 }
 
-export function elt(tag: string, content: string | Node[], attrs: Record<string, any>) {
+export function elt(tag: string, content: string | Node[] | null, attrs: Record<string, any>) {
   let e = document.createElement(tag);
   if (typeof content === 'string') {
     setTextContent(e, content);
@@ -64,7 +64,7 @@ export function elt(tag: string, content: string | Node[], attrs: Record<string,
   return e;
 }
 
-export function on(emitter, type: string, f, capture) {
+export function on(emitter, type: string, f, capture?: any) {
   if (emitter.addEventListener) {
     emitter.addEventListener(type, f, capture || false);
   } else if (emitter.attachEvent) {
@@ -124,18 +124,8 @@ export function stringEndsWith(str: string, suffix: string) {
   return false;
 }
 
-export function assert(b: any, msg: string) {
-  if (!b) {
-    throw new Error(msg || 'assertion error');
-  }
-}
-
-export function log() {
-  if (typeof console !== 'undefined' && typeof console.log !== 'undefined') {
-    const args = ['Firepad:'];
-    for (let i = 0; i < arguments.length; i++) {
-      args.push(arguments[i]);
-    }
-    console.log(args);
+export function assert(condition: any, msg?: string): asserts condition {
+  if (!condition) {
+    throw new Error(msg || 'Assertion error!');
   }
 }

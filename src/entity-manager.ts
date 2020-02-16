@@ -1,6 +1,6 @@
-var firepad = firepad || { };
+export class EntityManager {}
 
-firepad.EntityManager = (function () {
+firepad.EntityManager = (function() {
   var utils = firepad.utils;
 
   function EntityManager() {
@@ -12,31 +12,34 @@ firepad.EntityManager = (function () {
         utils.assert(info.src, "image entity should have 'src'!");
         var attrs = ['src', 'alt', 'width', 'height', 'style', 'class'];
         var html = '<img ';
-        for(var i = 0; i < attrs.length; i++) {
+        for (var i = 0; i < attrs.length; i++) {
           var attr = attrs[i];
           if (attr in info) {
             html += ' ' + attr + '="' + info[attr] + '"';
           }
         }
-        html += ">";
+        html += '>';
         return html;
       },
       fromElement: function(element) {
         var info = {};
-        for(var i = 0; i < attrs.length; i++) {
+        for (var i = 0; i < attrs.length; i++) {
           var attr = attrs[i];
           if (element.hasAttribute(attr)) {
             info[attr] = element.getAttribute(attr);
           }
         }
         return info;
-      }
+      },
     });
   }
 
   EntityManager.prototype.register = function(type, options) {
     firepad.utils.assert(options.render, "Entity options should include a 'render' function!");
-    firepad.utils.assert(options.fromElement, "Entity options should include a 'fromElement' function!");
+    firepad.utils.assert(
+      options.fromElement,
+      "Entity options should include a 'fromElement' function!"
+    );
     this.entities_[type] = options;
   };
 
@@ -46,9 +49,10 @@ firepad.EntityManager = (function () {
 
   EntityManager.prototype.exportToElement = function(entity) {
     // Turns out 'export' is a reserved keyword, so 'getHtml' is preferable.
-    var elt = this.tryRenderToElement_(entity, 'export') ||
-              this.tryRenderToElement_(entity, 'getHtml') ||
-              this.tryRenderToElement_(entity, 'render');
+    var elt =
+      this.tryRenderToElement_(entity, 'export') ||
+      this.tryRenderToElement_(entity, 'getHtml') ||
+      this.tryRenderToElement_(entity, 'render');
     elt.setAttribute('data-firepad-entity', entity.type);
     return elt;
   };
@@ -60,7 +64,7 @@ firepad.EntityManager = (function () {
   EntityManager.prototype.updateElement = function(entity, element) {
     var type = entity.type;
     var info = entity.info;
-    if (this.entities_[type] && typeof(this.entities_[type].update) != 'undefined') {
+    if (this.entities_[type] && typeof this.entities_[type].update !== 'undefined') {
       this.entities_[type].update(info, element);
     }
   };
@@ -69,8 +73,9 @@ firepad.EntityManager = (function () {
     var type = element.getAttribute('data-firepad-entity');
 
     // HACK.  This should be configurable through entity registration.
-    if (!type)
+    if (!type) {
       type = element.nodeName.toLowerCase();
+    }
 
     if (type && this.entities_[type]) {
       var info = this.entities_[type].fromElement(element);
@@ -79,7 +84,8 @@ firepad.EntityManager = (function () {
   };
 
   EntityManager.prototype.tryRenderToElement_ = function(entity, renderFn, entityHandle) {
-    var type = entity.type, info = entity.info;
+    var type = entity.type,
+      info = entity.info;
     if (this.entities_[type] && this.entities_[type][renderFn]) {
       var windowDocument = firepad.document || (window && window.document);
       var res = this.entities_[type][renderFn](info, entityHandle, windowDocument);
@@ -89,8 +95,13 @@ firepad.EntityManager = (function () {
           div.innerHTML = res;
           return div.childNodes[0];
         } else if (typeof res === 'object') {
-          firepad.utils.assert(typeof res.nodeType !== 'undefined', 'Error rendering ' + type + ' entity.  render() function' +
-              ' must return an html string or a DOM element.');
+          firepad.utils.assert(
+            typeof res.nodeType !== 'undefined',
+            'Error rendering ' +
+              type +
+              ' entity.  render() function' +
+              ' must return an html string or a DOM element.'
+          );
           return res;
         }
       }
@@ -98,7 +109,7 @@ firepad.EntityManager = (function () {
   };
 
   EntityManager.prototype.entitySupportsUpdate = function(entityType) {
-    return this.entities_[entityType] && this.entities_[entityType]['update'];
+    return this.entities_[entityType] && this.entities_[entityType].update;
   };
 
   return EntityManager;

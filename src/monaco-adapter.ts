@@ -1,5 +1,6 @@
 import {editor, Selection, IDisposable, Range} from 'monaco-editor';
-import {Cursor} from 'src/types';
+import {Cursor} from './types';
+import {TextOperation} from './text-operation';
 
 export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
@@ -203,12 +204,12 @@ export class MonacoAdapter {
       /** Delete Operation */
       replaced_text = content.slice(rangeOffset, rangeOffset + rangeLength);
 
-      change_op = new firepad.TextOperation()
+      change_op = new TextOperation()
         .retain(rangeOffset)
         .delete(rangeLength)
         .retain(restLength - rangeLength);
 
-      inverse_op = new firepad.TextOperation()
+      inverse_op = new TextOperation()
         .retain(rangeOffset)
         .insert(replaced_text)
         .retain(restLength - rangeLength);
@@ -216,25 +217,25 @@ export class MonacoAdapter {
       /** Replace Operation */
       replaced_text = content.slice(rangeOffset, rangeOffset + rangeLength);
 
-      change_op = new firepad.TextOperation()
+      change_op = new TextOperation()
         .retain(rangeOffset)
         .delete(rangeLength)
         .insert(text)
         .retain(restLength - rangeLength);
 
-      inverse_op = new firepad.TextOperation()
+      inverse_op = new TextOperation()
         .retain(rangeOffset)
         .delete(text.length)
         .insert(replaced_text)
         .retain(restLength - rangeLength);
     } else {
       /** Insert Operation */
-      change_op = new firepad.TextOperation()
+      change_op = new TextOperation()
         .retain(rangeOffset)
         .insert(text)
         .retain(restLength);
 
-      inverse_op = new firepad.TextOperation()
+      inverse_op = new TextOperation()
         .retain(rangeOffset)
         .delete(text)
         .retain(restLength);
@@ -254,7 +255,7 @@ export class MonacoAdapter {
 
       /** If no change information recieved */
       if (!event.changes) {
-        let op = new firepad.TextOperation().retain(content.length);
+        const op = new TextOperation().retain(content.length);
         this.trigger('change', op, op);
       }
 
@@ -270,30 +271,15 @@ export class MonacoAdapter {
     }
   };
 
-  /**
-   * @method trigger - Event Handler
-   * @param {string} event - Event name
-   * @param  {...any} args - Callback arguments
-   */
-  public trigger(event) {
+  /** Event Handler taking in specific event and callback arguments */
+  public trigger(event: string, ...args: any[]) {
     if (!this.callbacks.hasOwnProperty(event)) {
       return;
     }
-
     let action = this.callbacks[event];
-
     if (!typeof action === 'function') {
       return;
     }
-
-    let args = [];
-
-    if (arguments.length > 1) {
-      for (let i = 1; i < arguments.length; i++) {
-        args.push(arguments[i]);
-      }
-    }
-
     action.apply(null, args);
   }
 

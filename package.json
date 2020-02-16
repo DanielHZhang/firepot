@@ -13,5 +13,8 @@
   },
   "peerDependencies": {
     "monaco-editor": "^0.20.0"
+  },
+  "dependencies": {
+    "firebase": "^7.8.2"
   }
 }
