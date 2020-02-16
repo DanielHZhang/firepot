@@ -1,19 +1,18 @@
-var firepad = firepad || { };
+import {Text} from './text';
 
 /**
  * Helper to turn pieces of text into insertable operations
  */
-firepad.textPiecesToInserts = function(atNewLine, textPieces) {
-  var inserts = [];
+function textPiecesToInserts(atNewLine, textPieces) {
+  const inserts = [];
 
-  function insert(string, attributes) {
-    if (string instanceof firepad.Text) {
-      attributes = string.formatting.attributes;
-      string     = string.text;
+  function insert(str, attributes) {
+    if (str instanceof Text) {
+      attributes = str.formatting.attributes;
+      str = str.text;
     }
-
-    inserts.push({string: string, attributes: attributes});
-    atNewLine = string[string.length-1] === '\n';
+    inserts.push({string: str, attributes: attributes});
+    atNewLine = str[str.length - 1] === '\n';
   }
 
   function insertLine(line, withNewline) {
@@ -24,16 +23,18 @@ firepad.textPiecesToInserts = function(atNewLine, textPieces) {
       insert(firepad.sentinelConstants.LINE_SENTINEL_CHARACTER, line.formatting.attributes);
     }
 
-    for(var i = 0; i < line.textPieces.length; i++) {
+    for (let i = 0; i < line.textPieces.length; i++) {
       insert(line.textPieces[i]);
     }
 
-    if (withNewline) insert('\n');
+    if (withNewline) {
+      insert('\n');
+    }
   }
 
-  for(var i = 0; i < textPieces.length; i++) {
+  for (let i = 0; i < textPieces.length; i++) {
     if (textPieces[i] instanceof firepad.Line) {
-      insertLine(textPieces[i], i<textPieces.length-1);
+      insertLine(textPieces[i], i < textPieces.length - 1);
     } else {
       insert(textPieces[i]);
     }
