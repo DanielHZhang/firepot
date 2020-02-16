@@ -3,6 +3,9 @@ import {Cursor} from '../cursor';
 import {UndoManager} from '../undo-manager';
 import {WrappedOperation} from '../operations/wrapped-operation';
 import {TextOperation} from '../operations/text-operation';
+import {makeEventEmitter} from '../utils';
+import {Synchronized} from './states/synchronized';
+import {AwaitingWithBuffer} from './states/awaiting-buffer';
 
 class SelfMeta {
   public cursorBefore: Cursor;
@@ -33,7 +36,7 @@ class OtherClient {
   public id: string;
   public editorAdapter: any;
   public color: string;
-  public cursor: Cursor;
+  public cursor: Cursor | null;
   public mark: any;
 
   constructor(id: string, editorAdapter: any) {
@@ -62,8 +65,9 @@ export class EditorClient extends Client {
   public serverAdapter: any;
   public editorAdapter: any;
   public undoManager: UndoManager;
-  public clients: {};
+  public clients: Record<string, OtherClient>;
   public focused: boolean;
+  public cursor: Cursor;
 
   constructor(serverAdapter: any, editorAdapter: any) {
     super();
@@ -73,7 +77,7 @@ export class EditorClient extends Client {
     this.clients = {};
 
     this.editorAdapter.registerCallbacks({
-      change: (operation, inverse) => {
+      change: (operation: TextOperation, inverse: TextOperation) => {
         this.onChange(operation, inverse);
       },
       cursorActivity: () => {
@@ -96,7 +100,7 @@ export class EditorClient extends Client {
     this.serverAdapter.registerCallbacks({
       ack: () => {
         this.serverAck();
-        if (this.focused && this.state instanceof Client.Synchronized) {
+        if (this.focused && this.state instanceof Synchronized) {
           this.updateCursor();
           this.sendCursor(this.cursor);
         }
@@ -105,14 +109,11 @@ export class EditorClient extends Client {
       retry: () => {
         this.serverRetry();
       },
-      operation: (operation) => {
+      operation: (operation: TextOperation) => {
         this.applyServer(operation);
       },
-      cursor: (clientId, cursor, color) => {
-        if (
-          this.serverAdapter.userId_ === clientId ||
-          !(this.state instanceof Client.Synchronized)
-        ) {
+      cursor: (clientId: string, cursor: Cursor, color: string) => {
+        if (this.serverAdapter.userId_ === clientId || !(this.state instanceof Synchronized)) {
           return;
         }
         let client = this.getClientObject(clientId);
@@ -128,15 +129,15 @@ export class EditorClient extends Client {
     });
   }
 
-  getClientObject(clientId) {
-    let client = this.clients[clientId];
+  getClientObject(clientId: string) {
+    const client = this.clients[clientId];
     if (client) {
       return client;
     }
     return (this.clients[clientId] = new OtherClient(clientId, this.editorAdapter));
   }
 
-  applyUnredo(operation) {
+  applyUnredo(operation: TextOperation) {
     this.undoManager.add(this.editorAdapter.invertOperation(operation));
     this.editorAdapter.applyOperation(operation.wrapped);
     this.cursor = operation.meta.cursorAfter;
@@ -147,26 +148,22 @@ export class EditorClient extends Client {
   }
 
   undo() {
-    let self = this;
-    if (!this.undoManager.canUndo()) {
-      return;
+    if (this.undoManager.canUndo()) {
+      this.undoManager.performUndo((o) => {
+        this.applyUnredo(o);
+      });
     }
-    this.undoManager.performUndo(function(o) {
-      self.applyUnredo(o);
-    });
   }
 
   redo() {
-    let self = this;
-    if (!this.undoManager.canRedo()) {
-      return;
+    if (this.undoManager.canRedo()) {
+      this.undoManager.performRedo((o) => {
+        this.applyUnredo(o);
+      });
     }
-    this.undoManager.performRedo(function(o) {
-      self.applyUnredo(o);
-    });
   }
 
-  onChange(textOperation, inverse) {
+  onChange(textOperation: TextOperation, inverse: TextOperation) {
     let cursorBefore = this.cursor;
     this.updateCursor();
 
@@ -204,19 +201,19 @@ export class EditorClient extends Client {
     this.onCursorActivity();
   }
 
-  sendCursor(cursor) {
-    if (this.state instanceof Client.AwaitingWithBuffer) {
+  sendCursor(cursor: Cursor) {
+    if (this.state instanceof AwaitingWithBuffer) {
       return;
     }
     this.serverAdapter.sendCursor(cursor);
   }
 
-  sendOperation(operation) {
+  sendOperation(operation: TextOperation) {
     this.serverAdapter.sendOperation(operation);
     this.emitStatus();
   }
 
-  applyOperation(operation) {
+  applyOperation(operation: TextOperation) {
     this.editorAdapter.applyOperation(operation);
     this.updateCursor();
     this.undoManager.transform(new WrappedOperation(operation, null));
@@ -224,9 +221,9 @@ export class EditorClient extends Client {
 
   emitStatus() {
     setTimeout(() => {
-      this.trigger('synced', self.state instanceof Client.Synchronized);
+      this.trigger('synced', this.state instanceof Synchronized);
     }, 0);
   }
 }
 
-firepad.utils.makeEventEmitter(firepad.EditorClient, ['synced']);
+makeEventEmitter(EditorClient, ['synced']);

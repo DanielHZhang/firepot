@@ -1,3 +1,5 @@
+import {TextOperation} from './text-operation';
+
 // Copy all properties from source to target.
 function copy(source: Record<any, any>, target: Record<any, any>) {
   for (let key in source) {
@@ -20,7 +22,7 @@ function composeMeta(a: {compose: Function}, b: any) {
   return b;
 }
 
-function transformMeta(meta: {transform: Function}, operation: WrappedOperation) {
+function transformMeta(meta: {transform: Function}, operation: TextOperation) {
   if (meta && typeof meta === 'object') {
     if (typeof meta.transform === 'function') {
       return meta.transform(operation);
@@ -35,11 +37,11 @@ type Meta = {
 };
 
 export class WrappedOperation {
-  public wrapped: WrappedOperation;
+  public wrapped: TextOperation;
   public meta: any;
 
   // A WrappedOperation contains an operation and corresponing metadata.
-  constructor(operation: WrappedOperation, meta: Meta) {
+  constructor(operation: TextOperation, meta?: Meta | null) {
     this.wrapped = operation;
     this.meta = meta;
   }

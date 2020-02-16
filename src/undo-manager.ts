@@ -1,8 +1,11 @@
+import {TextOperation} from './operations/text-operation';
+import {WrappedOperation} from './operations/wrapped-operation';
+
 const NORMAL_STATE = 'normal';
 const UNDOING_STATE = 'undoing';
 const REDOING_STATE = 'redoing';
 
-function transformStack(stack, operation) {
+function transformStack(stack: WrappedOperation[], operation: WrappedOperation) {
   let newStack = [];
   let Operation = operation.constructor;
   for (let i = stack.length - 1; i >= 0; i--) {
@@ -19,8 +22,8 @@ export class UndoManager {
   public maxItems: number;
   public state: string;
   public dontCompose: boolean;
-  public undoStack: never[];
-  public redoStack: never[];
+  public undoStack: WrappedOperation[];
+  public redoStack: WrappedOperation[];
 
   // Create a new UndoManager with an optional maximum history size.
   constructor(maxItems?: number) {
@@ -36,7 +39,7 @@ export class UndoManager {
   // edit. When `compose` is true, compose the operation with the last operation
   // unless the last operation was alread pushed on the redo stack or was hidden
   // by a newer operation on the undo stack.
-  add(operation, compose) {
+  add(operation: WrappedOperation, compose?: any) {
     if (this.state === UNDOING_STATE) {
       this.redoStack.push(operation);
       this.dontCompose = true;
@@ -59,7 +62,7 @@ export class UndoManager {
   }
 
   // Transform the undo and redo stacks against a operation by another client.
-  transform(operation) {
+  transform(operation: WrappedOperation) {
     this.undoStack = transformStack(this.undoStack, operation);
     this.redoStack = transformStack(this.redoStack, operation);
   }

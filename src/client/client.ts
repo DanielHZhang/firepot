@@ -3,8 +3,8 @@ import {Synchronized} from './states/synchronized';
 
 export abstract class Client {
   public state: Synchronized;
-  static Synchronized: Synchronized;
-  static AwaitingWithBuffer: any;
+  // static Synchronized: Synchronized;
+  // static AwaitingWithBuffer: any;
 
   constructor() {
     this.state = new Synchronized(); // start state
