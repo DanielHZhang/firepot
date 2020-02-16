@@ -1,4 +1,4 @@
-export function makeEventEmitter(clazz: any, allowedEvents: string[]) {
+export function makeEventEmitter(clazz: any, allowedEvents?: string[]) {
   clazz.prototype.allowedEvents_ = allowedEvents;
 
   clazz.prototype.on = function(eventType: string, callback: Function, context: any) {
