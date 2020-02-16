@@ -1,3 +1,5 @@
+import {Client} from '../client';
+
 /**
  * In the 'AwaitingWithBuffer' state, the client is waiting for an operation
  * to be acknowledged by the server while buffering the edits the user makes
