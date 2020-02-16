@@ -2,110 +2,120 @@ import {Client} from './client';
 import {Cursor} from '../cursor';
 import {UndoManager} from '../undo-manager';
 import {WrappedOperation} from '../operations/wrapped-operation';
+import {TextOperation} from '../operations/text-operation';
 
-export class EditorClient {}
+class SelfMeta {
+  public cursorBefore: Cursor;
+  public cursorAfter: Cursor;
 
-firepad.EditorClient = (function() {
-  var Client = firepad.Client;
-  var Cursor = firepad.Cursor;
-  var UndoManager = firepad.UndoManager;
-  var WrappedOperation = firepad.WrappedOperation;
-
-  function SelfMeta(cursorBefore, cursorAfter) {
+  constructor(cursorBefore: Cursor, cursorAfter: Cursor) {
     this.cursorBefore = cursorBefore;
     this.cursorAfter = cursorAfter;
   }
 
-  SelfMeta.prototype.invert = function() {
+  invert() {
     return new SelfMeta(this.cursorAfter, this.cursorBefore);
-  };
+  }
 
-  SelfMeta.prototype.compose = function(other) {
+  compose(other: SelfMeta) {
     return new SelfMeta(this.cursorBefore, other.cursorAfter);
-  };
+  }
 
-  SelfMeta.prototype.transform = function(operation) {
+  transform(operation: TextOperation) {
     return new SelfMeta(
       this.cursorBefore ? this.cursorBefore.transform(operation) : null,
       this.cursorAfter ? this.cursorAfter.transform(operation) : null
     );
-  };
+  }
+}
 
-  function OtherClient(id, editorAdapter) {
+class OtherClient {
+  public id: string;
+  public editorAdapter: any;
+  public color: string;
+  public cursor: Cursor;
+  public mark: any;
+
+  constructor(id: string, editorAdapter: any) {
     this.id = id;
     this.editorAdapter = editorAdapter;
   }
 
-  OtherClient.prototype.setColor = function(color) {
+  setColor(color: string) {
     this.color = color;
-  };
+  }
 
-  OtherClient.prototype.updateCursor = function(cursor) {
+  updateCursor(cursor: Cursor) {
     this.removeCursor();
     this.cursor = cursor;
     this.mark = this.editorAdapter.setOtherCursor(cursor, this.color, this.id);
-  };
+  }
 
-  OtherClient.prototype.removeCursor = function() {
+  removeCursor() {
     if (this.mark) {
       this.mark.clear();
     }
-  };
+  }
+}
 
-  function EditorClient(serverAdapter, editorAdapter) {
-    Client.call(this);
+export class EditorClient extends Client {
+  public serverAdapter: any;
+  public editorAdapter: any;
+  public undoManager: UndoManager;
+  public clients: {};
+  public focused: boolean;
+
+  constructor(serverAdapter: any, editorAdapter: any) {
+    super();
     this.serverAdapter = serverAdapter;
     this.editorAdapter = editorAdapter;
     this.undoManager = new UndoManager();
-
     this.clients = {};
 
-    var self = this;
-
     this.editorAdapter.registerCallbacks({
-      change: function(operation, inverse) {
-        self.onChange(operation, inverse);
+      change: (operation, inverse) => {
+        this.onChange(operation, inverse);
       },
-      cursorActivity: function() {
-        self.onCursorActivity();
+      cursorActivity: () => {
+        this.onCursorActivity();
       },
-      blur: function() {
-        self.onBlur();
+      blur: () => {
+        this.onBlur();
       },
-      focus: function() {
-        self.onFocus();
+      focus: () => {
+        this.onFocus();
       },
     });
-    this.editorAdapter.registerUndo(function() {
-      self.undo();
+    this.editorAdapter.registerUndo(() => {
+      this.undo();
     });
-    this.editorAdapter.registerRedo(function() {
-      self.redo();
+    this.editorAdapter.registerRedo(() => {
+      this.redo();
     });
 
     this.serverAdapter.registerCallbacks({
-      ack: function() {
-        self.serverAck();
-        if (self.focused && self.state instanceof Client.Synchronized) {
-          self.updateCursor();
-          self.sendCursor(self.cursor);
+      ack: () => {
+        this.serverAck();
+        if (this.focused && this.state instanceof Client.Synchronized) {
+          this.updateCursor();
+          this.sendCursor(this.cursor);
         }
-        self.emitStatus();
+        this.emitStatus();
       },
-      retry: function() {
-        self.serverRetry();
+      retry: () => {
+        this.serverRetry();
       },
-      operation: function(operation) {
-        self.applyServer(operation);
+      operation: (operation) => {
+        this.applyServer(operation);
       },
-      cursor: function(clientId, cursor, color) {
+      cursor: (clientId, cursor, color) => {
         if (
-          self.serverAdapter.userId_ === clientId ||
-          !(self.state instanceof Client.Synchronized)
+          this.serverAdapter.userId_ === clientId ||
+          !(this.state instanceof Client.Synchronized)
         ) {
           return;
         }
-        var client = self.getClientObject(clientId);
+        let client = this.getClientObject(clientId);
         if (cursor) {
           if (color) {
             client.setColor(color);
@@ -118,17 +128,15 @@ firepad.EditorClient = (function() {
     });
   }
 
-  inherit(EditorClient, Client);
-
-  EditorClient.prototype.getClientObject = function(clientId) {
-    var client = this.clients[clientId];
+  getClientObject(clientId) {
+    let client = this.clients[clientId];
     if (client) {
       return client;
     }
     return (this.clients[clientId] = new OtherClient(clientId, this.editorAdapter));
-  };
+  }
 
-  EditorClient.prototype.applyUnredo = function(operation) {
+  applyUnredo(operation) {
     this.undoManager.add(this.editorAdapter.invertOperation(operation));
     this.editorAdapter.applyOperation(operation.wrapped);
     this.cursor = operation.meta.cursorAfter;
@@ -136,102 +144,89 @@ firepad.EditorClient = (function() {
       this.editorAdapter.setCursor(this.cursor);
     }
     this.applyClient(operation.wrapped);
-  };
+  }
 
-  EditorClient.prototype.undo = function() {
-    var self = this;
+  undo() {
+    let self = this;
     if (!this.undoManager.canUndo()) {
       return;
     }
     this.undoManager.performUndo(function(o) {
       self.applyUnredo(o);
     });
-  };
+  }
 
-  EditorClient.prototype.redo = function() {
-    var self = this;
+  redo() {
+    let self = this;
     if (!this.undoManager.canRedo()) {
       return;
     }
     this.undoManager.performRedo(function(o) {
       self.applyUnredo(o);
     });
-  };
+  }
 
-  EditorClient.prototype.onChange = function(textOperation, inverse) {
-    var cursorBefore = this.cursor;
+  onChange(textOperation, inverse) {
+    let cursorBefore = this.cursor;
     this.updateCursor();
 
-    var compose =
+    let compose =
       this.undoManager.undoStack.length > 0 &&
-      inverse.shouldBeComposedWithInverted(last(this.undoManager.undoStack).wrapped);
-    var inverseMeta = new SelfMeta(this.cursor, cursorBefore);
+      inverse.shouldBeComposedWithInverted(
+        this.undoManager.undoStack[this.undoManager.undoStack.length - 1].wrapped
+      );
+    let inverseMeta = new SelfMeta(this.cursor, cursorBefore);
     this.undoManager.add(new WrappedOperation(inverse, inverseMeta), compose);
     this.applyClient(textOperation);
-  };
+  }
 
-  EditorClient.prototype.updateCursor = function() {
+  updateCursor() {
     this.cursor = this.editorAdapter.getCursor();
-  };
+  }
 
-  EditorClient.prototype.onCursorActivity = function() {
-    var oldCursor = this.cursor;
+  onCursorActivity() {
+    let oldCursor = this.cursor;
     this.updateCursor();
     if (!this.focused || (oldCursor && this.cursor.equals(oldCursor))) {
       return;
     }
     this.sendCursor(this.cursor);
-  };
+  }
 
-  EditorClient.prototype.onBlur = function() {
+  onBlur() {
     this.cursor = null;
     this.sendCursor(null);
     this.focused = false;
-  };
+  }
 
-  EditorClient.prototype.onFocus = function() {
+  onFocus() {
     this.focused = true;
     this.onCursorActivity();
-  };
+  }
 
-  EditorClient.prototype.sendCursor = function(cursor) {
+  sendCursor(cursor) {
     if (this.state instanceof Client.AwaitingWithBuffer) {
       return;
     }
     this.serverAdapter.sendCursor(cursor);
-  };
+  }
 
-  EditorClient.prototype.sendOperation = function(operation) {
+  sendOperation(operation) {
     this.serverAdapter.sendOperation(operation);
     this.emitStatus();
-  };
+  }
 
-  EditorClient.prototype.applyOperation = function(operation) {
+  applyOperation(operation) {
     this.editorAdapter.applyOperation(operation);
     this.updateCursor();
     this.undoManager.transform(new WrappedOperation(operation, null));
-  };
+  }
 
-  EditorClient.prototype.emitStatus = function() {
-    var self = this;
-    setTimeout(function() {
-      self.trigger('synced', self.state instanceof Client.Synchronized);
+  emitStatus() {
+    setTimeout(() => {
+      this.trigger('synced', self.state instanceof Client.Synchronized);
     }, 0);
-  };
-
-  // Set Const.prototype.__proto__ to Super.prototype
-  function inherit(Const, Super) {
-    function F() {}
-    F.prototype = Super.prototype;
-    Const.prototype = new F();
-    Const.prototype.constructor = Const;
   }
-
-  function last(arr) {
-    return arr[arr.length - 1];
-  }
-
-  return EditorClient;
-})();
+}
 
 firepad.utils.makeEventEmitter(firepad.EditorClient, ['synced']);

@@ -1,13 +1,15 @@
 import {AwaitingWithBuffer} from './awaiting-buffer';
+import {Client} from '../client';
+import {TextOperation} from '../../operations/text-operation';
 
 /**
  * In the 'AwaitingConfirm' state, there's one operation the client has sent
  * to the server and is still waiting for an acknowledgement.
  */
 export class AwaitingConfirm {
-  public outstanding: boolean;
+  public outstanding: TextOperation;
 
-  constructor(outstanding: boolean) {
+  constructor(outstanding: TextOperation) {
     // Save the pending operation
     this.outstanding = outstanding;
   }
@@ -18,7 +20,7 @@ export class AwaitingConfirm {
     return new AwaitingWithBuffer(this.outstanding, operation);
   }
 
-  applyServer(client, operation) {
+  applyServer(client: Client, operation: TextOperation) {
     // This is another client's operation. Visualization:
     //
     //                   /\
@@ -34,13 +36,13 @@ export class AwaitingConfirm {
     return new AwaitingConfirm(pair[0]);
   }
 
-  serverAck(client) {
+  serverAck(client: Client) {
     // The client's operation has been acknowledged
     // => switch to synchronized state
     return synchronized_;
   }
 
-  serverRetry(client) {
+  serverRetry(client: Client) {
     client.sendOperation(this.outstanding);
     return this;
   }

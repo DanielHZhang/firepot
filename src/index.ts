@@ -3,7 +3,6 @@ import {database} from 'firebase';
 import {editor} from 'monaco-editor';
 import {MonacoAdapter} from './adapters/monaco';
 import {elt, on, stopEvent} from './utils';
-import {EntityManager} from './entity-manager';
 
 export class Firepad {
   public zombie_: boolean;
@@ -36,7 +35,6 @@ export class Firepad {
 
     let userId = this.getOption('userId', ref.push().key);
     let userColor = this.getOption('userColor', colorFromUserId(userId));
-    this.entityManager_ = new EntityManager();
 
     this.firebaseAdapter_ = new FirebaseAdapter(ref, userId, userColor);
     this.editorAdapter_ = new MonacoAdapter(this.monaco_);
@@ -215,27 +213,8 @@ export class Firepad {
 //     return this.getHtmlFromRange(startIndex, endIndex);
 //   };
 
-//   Firepad.prototype.getHtmlFromRange = function(start, end) {
-//     this.assertReady_('getHtmlFromRange');
-//     let doc =
-//       start != null && end != null
-//         ? this.getOperationForSpan(start, end)
-//         : this.getOperationForSpan(0, this.codeMirror_.getValue().length);
-//     return firepad.SerializeHtml(doc, this.entityManager_);
-//   };
-
-//   Firepad.prototype.insertHtml = function(index, html) {
-//     let lines = firepad.ParseHtml(html, this.entityManager_);
-//     this.insertText(index, lines);
-//   };
-
 //   Firepad.prototype.insertHtmlAtCursor = function(html) {
 //     this.insertHtml(this.codeMirror_.indexFromPos(this.codeMirror_.getCursor()), html);
-//   };
-
-//   Firepad.prototype.setHtml = function(html) {
-//     let lines = firepad.ParseHtml(html, this.entityManager_);
-//     this.setText(lines);
 //   };
 
 //   Firepad.prototype.isHistoryEmpty = function() {
@@ -535,17 +514,3 @@ export class Firepad {
 
 //   return Firepad;
 // })(this);
-
-// // Export Text classes
-// firepad.Firepad.Formatting = firepad.Formatting;
-// firepad.Firepad.Text = firepad.Text;
-// firepad.Firepad.Entity = firepad.Entity;
-// firepad.Firepad.LineFormatting = firepad.LineFormatting;
-// firepad.Firepad.Line = firepad.Line;
-// firepad.Firepad.TextOperation = firepad.TextOperation;
-// firepad.Firepad.Headless = firepad.Headless;
-
-// // Export adapters
-// firepad.Firepad.RichTextCodeMirrorAdapter = firepad.RichTextCodeMirrorAdapter;
-// firepad.Firepad.ACEAdapter = firepad.ACEAdapter;
-// firepad.Firepad.MonacoAdapter = firepad.MonacoAdapter;

@@ -1,14 +1,16 @@
 import {Client} from '../client';
+import {TextOperation} from '../../operations/text-operation';
+import {AwaitingConfirm} from './awaiting-confirm';
 
 /**
  * In the 'AwaitingWithBuffer' state, the client is waiting for an operation
  * to be acknowledged by the server while buffering the edits the user makes
  */
 export class AwaitingWithBuffer {
-  public outstanding: boolean;
+  public outstanding: TextOperation;
   public buffer: any;
 
-  constructor(outstanding: boolean, buffer: any) {
+  constructor(outstanding: TextOperation, buffer: any) {
     // Save the pending operation and the user's edits since then
     this.outstanding = outstanding;
     this.buffer = buffer;
