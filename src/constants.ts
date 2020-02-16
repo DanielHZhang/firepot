@@ -20,3 +20,12 @@ export enum Sentinels {
   // A special character used to represent any "entity" inserted into the document (e.g. an image).
   ENTITY_CHARACTER = '\uE001',
 }
+
+export type Cursor = {
+  /** Starting Position of the Cursor */
+  position?: number;
+  /** Ending Position of the Cursor */
+  selectionEnd?: number;
+  clientID?: string | number;
+  decoration?: string[];
+};

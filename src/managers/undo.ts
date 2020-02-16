@@ -1,5 +1,4 @@
-import {TextOperation} from './operations/text-operation';
-import {WrappedOperation} from './operations/wrapped-operation';
+import {WrappedOperation} from '../operations/wrapped-operation';
 
 const NORMAL_STATE = 'normal';
 const UNDOING_STATE = 'undoing';

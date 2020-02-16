@@ -1,4 +1,3 @@
-// import {editor} from 'monaco-editor';
 import {database} from 'firebase';
 import {editor} from 'monaco-editor';
 import {MonacoAdapter} from './adapters/monaco';

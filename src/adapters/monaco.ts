@@ -1,5 +1,5 @@
 import {editor, Selection, IDisposable, Range} from 'monaco-editor';
-import {Cursor} from '../types';
+import {Cursor} from '../constants';
 import {TextOperation} from '../operations/text-operation';
 
 export class MonacoAdapter {

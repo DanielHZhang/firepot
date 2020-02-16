@@ -1,4 +1,4 @@
-import {TextOperation} from './operations/text-operation';
+import {TextOperation} from '../operations/text-operation';
 
 // A cursor has a `position` and a `selectionEnd`. Both are zero-based indexes
 // into the document. When nothing is selected, `selectionEnd` is equal to
