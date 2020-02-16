@@ -1,5 +1,5 @@
 import {TextOp} from './text-op';
-import {assert} from './utils';
+import {assert} from '../utils';
 
 function getSimpleOp(operation: TextOperation) {
   let ops = operation.ops;
@@ -265,7 +265,7 @@ export class TextOperation {
   }
 
   /** Insert a string at the current position. */
-  public insert(str?: string, attributes: Record<string, any> = {}) {
+  public insert(str?: string | null, attributes: Record<string, any> = {}) {
     if (typeof str !== 'string') {
       throw new Error('insert expects a string');
     }
@@ -603,7 +603,7 @@ export class TextOperation {
   // returns true if the operations are consecutive insert operations or both
   // operations delete text at the same position. You may want to include other
   // factors like the time since the last change in your decision.
-  shouldBeComposedWith(other) {
+  shouldBeComposedWith(other: TextOperation) {
     if (this.isNoop() || other.isNoop()) {
       return true;
     }
@@ -627,7 +627,7 @@ export class TextOperation {
     }
 
     return false;
-  };
+  }
 
   // Decides whether two operations should be composed with each other
   // if they were inverted, that is
@@ -654,10 +654,10 @@ export class TextOperation {
     }
 
     return false;
-  };
+  }
 
   // convenience method to write transform(a, b) as a.transform(b)
-  transform(other) {
+  transform(other: TextOperation) {
     return TextOperation.transform(this, other);
-  };
+  }
 }

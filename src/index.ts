@@ -1,7 +1,7 @@
 // import {editor} from 'monaco-editor';
 import {database} from 'firebase';
 import {editor} from 'monaco-editor';
-import {MonacoAdapter} from './monaco-adapter';
+import {MonacoAdapter} from './adapters/monaco';
 import {elt, on, stopEvent} from './utils';
 import {EntityManager} from './entity-manager';
 
@@ -57,9 +57,9 @@ export class Firepad {
       this.trigger('ready');
     });
 
-    // this.client_.on('synced', function(isSynced) {
-    //   self.trigger('synced', isSynced);
-    // });
+    this.client_.on('synced', (isSynced) => {
+      this.trigger('synced', isSynced);
+    });
 
     // // Hack for IE8 to make font icons work more reliably.
     // // http://stackoverflow.com/questions/9809351/ie8-css-font-face-fonts-only-working-for-before-content-on-over-and-sometimes

@@ -1,4 +1,4 @@
-import {assert} from './utils';
+import {assert} from '../utils';
 
 /**
  * Operation are essentially lists of ops. There are three types of ops:

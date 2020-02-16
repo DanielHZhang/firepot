@@ -1,7 +1,6 @@
 import {database} from 'firebase';
-import {TextOperation} from './text-operation';
-// import {TextOp} from './text-op';
-import {assert, makeEventEmitter} from './utils';
+import {TextOperation} from '../operations/text-operation';
+import {assert, makeEventEmitter} from '../utils';
 
 // Save a checkpoint every 100 edits.
 const CHECKPOINT_FREQUENCY = 100;
@@ -293,7 +292,7 @@ export class FirebaseAdapter {
         this.handleInitialRevisions_();
       });
     }, 0);
-  };
+  }
 
   handleInitialRevisions_() {
     assert(!this.ready_, 'Should not be called multiple times.');
@@ -322,7 +321,7 @@ export class FirebaseAdapter {
     setTimeout(() => {
       this.trigger('ready');
     }, 0);
-  };
+  }
 
   handlePendingReceivedRevisions_() {
     let pending = this.pendingReceivedRevisions_;
@@ -364,10 +363,9 @@ export class FirebaseAdapter {
       this.sent_ = null;
       this.trigger('retry');
     }
-  };
+  }
 
   parseRevision_(data: Record<any, any> | string) {
-    // We could do some of this validation via security rules.  But it's nice to be robust, just in case.
     if (typeof data !== 'object') {
       return null;
     }
@@ -380,20 +378,19 @@ export class FirebaseAdapter {
     } catch (e) {
       return null;
     }
-
     if (op.baseLength !== this.document_.targetLength) {
       return null;
     }
     return {author: data.a, operation: op};
-  };
+  }
 
-  saveCheckpoint_ = function() {
+  saveCheckpoint_() {
     this.ref_.child('checkpoint').set({
       a: this.userId_,
       o: this.document_.toJSON(),
       id: revisionToId(this.revision_ - 1), // use the id for the revision we just wrote.
     });
-  };
+  }
 
   firebaseOn_(
     ref: database.Reference,

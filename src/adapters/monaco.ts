@@ -1,6 +1,6 @@
 import {editor, Selection, IDisposable, Range} from 'monaco-editor';
-import {Cursor} from './types';
-import {TextOperation} from './text-operation';
+import {Cursor} from '../types';
+import {TextOperation} from '../operations/text-operation';
 
 export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
@@ -304,7 +304,7 @@ export class MonacoAdapter {
    * @method applyOperation
    * @param {Operation} operation - OT.js Operation Object
    */
-  public applyOperation(operation) {
+  public applyOperation(operation: TextOperation) {
     if (!operation.isNoop()) {
       this.ignoreChanges = true;
     }
@@ -350,11 +350,7 @@ export class MonacoAdapter {
     this.ignoreChanges = false;
   }
 
-  /**
-   * @method invertOperation
-   * @param {Operation} operation - OT.js Operation Object
-   */
-  public invertOperation(operation: any) {
+  public invertOperation(operation: TextOperation) {
     operation.invert(this.monaco.getValue());
   }
 }
