@@ -24,7 +24,7 @@ function getSimpleOp(operation: TextOperation) {
 
 function getStartIndex(operation: TextOperation) {
   if (operation.ops[0].isRetain()) {
-    return operation.ops[0].chars;
+    return operation.ops[0].chars!;
   }
   return 0;
 }
@@ -105,15 +105,18 @@ export class TextOperation {
     return [attributes1prime, attributes2prime];
   }
 
-  // Transform takes two operations A and B that happened concurrently and produces two operations
-  // A' and B' (in an array) such that `apply(apply(S, A), B') = apply(apply(S, B), A')`.
+  /**
+   * Transform takes two operations A and B that happened concurrently and produces
+   * two operations A' and B' (in an array) such that `apply(apply(S, A), B') =
+   * apply(apply(S, B), A')`.
+   */
   public static transform(operation1: TextOperation, operation2: TextOperation) {
     if (operation1.baseLength !== operation2.baseLength) {
       throw new Error('Both operations have to have the same base length');
     }
 
-    let operation1prime = new TextOperation();
-    let operation2prime = new TextOperation();
+    const operation1prime = new TextOperation();
+    const operation2prime = new TextOperation();
     let ops1 = operation1.clone().ops;
     let ops2 = operation2.clone().ops;
     let i1 = 0;
@@ -132,13 +135,13 @@ export class TextOperation {
       // next two cases: one or both ops are insert ops
       // => insert the string in the corresponding prime operation, skip it in
       // the other one. If both op1 and op2 are insert ops, prefer op1.
-      if (op1 && op1.isInsert()) {
+      if (op1 && op1.isInsert() && op1.text) {
         operation1prime.insert(op1.text, op1.attributes);
         operation2prime.retain(op1.text.length);
         op1 = ops1[i1++];
         continue;
       }
-      if (op2 && op2.isInsert()) {
+      if (op2 && op2.isInsert() && op2.text) {
         operation1prime.retain(op2.text.length);
         operation2prime.insert(op2.text, op2.attributes);
         op2 = ops2[i2++];
@@ -151,11 +154,11 @@ export class TextOperation {
       if (typeof op2 === 'undefined') {
         throw new Error('Cannot transform operations: first operation is too long.');
       }
-
+      assert(typeof op1.chars === 'number' && typeof op2.chars === 'number');
       let minl;
       if (op1.isRetain() && op2.isRetain()) {
         // Simple case: retain/retain
-        let attributesPrime = TextOperation.transformAttributes(op1.attributes, op2.attributes);
+        const attributesPrime = TextOperation.transformAttributes(op1.attributes, op2.attributes);
         if (op1.chars > op2.chars) {
           minl = op2.chars;
           op1.chars -= op2.chars;
@@ -169,7 +172,6 @@ export class TextOperation {
           op2.chars -= op1.chars;
           op1 = ops1[i1++];
         }
-
         operation1prime.retain(minl, attributesPrime[0]);
         operation2prime.retain(minl, attributesPrime[1]);
       } else if (op1.isDelete() && op2.isDelete()) {
@@ -244,17 +246,18 @@ export class TextOperation {
   }
 
   /** Skip over a given number of characters. */
-  public retain(n: number, attributes: Record<string, any> = {}) {
+  public retain(n: number, attributes?: Record<string, any> | null) {
     if (typeof n !== 'number' || n < 0) {
       throw new Error('retain expects a positive integer.');
     }
     if (n === 0) {
       return this;
     }
+    attributes = attributes || {};
     this.baseLength += n;
     this.targetLength += n;
     let prevOp = this.ops.length > 0 ? this.ops[this.ops.length - 1] : null;
-    if (prevOp && prevOp.isRetain() && prevOp.attributesEqual(attributes)) {
+    if (prevOp && prevOp.chars && prevOp.isRetain() && prevOp.attributesEqual(attributes)) {
       // The last op is a retain op with the same attributes => we can merge them into one op.
       prevOp.chars += n;
     } else {
@@ -265,13 +268,14 @@ export class TextOperation {
   }
 
   /** Insert a string at the current position. */
-  public insert(str?: string | null, attributes: Record<string, any> = {}) {
+  public insert(str?: string | null, attributes?: Record<string, any> | null) {
     if (typeof str !== 'string') {
       throw new Error('insert expects a string');
     }
     if (str === '') {
       return this;
     }
+    attributes = attributes || {};
     this.targetLength += str.length;
     let prevOp = this.ops.length > 0 ? this.ops[this.ops.length - 1] : null;
     let prevPrevOp = this.ops.length > 1 ? this.ops[this.ops.length - 2] : null;
@@ -309,7 +313,7 @@ export class TextOperation {
     }
     this.baseLength += n;
     let prevOp = this.ops.length > 0 ? this.ops[this.ops.length - 1] : null;
-    if (prevOp && prevOp.isDelete()) {
+    if (prevOp && prevOp.chars && prevOp.isDelete()) {
       prevOp.chars += n;
     } else {
       this.ops.push(new Operation('delete', n));
@@ -329,11 +333,11 @@ export class TextOperation {
     const clone = new TextOperation();
     for (let i = 0; i < this.ops.length; i++) {
       if (this.ops[i].isRetain()) {
-        clone.retain(this.ops[i].chars, this.ops[i].attributes);
+        clone.retain(this.ops[i].chars!, this.ops[i].attributes);
       } else if (this.ops[i].isInsert()) {
         clone.insert(this.ops[i].text, this.ops[i].attributes);
       } else {
-        clone.delete(this.ops[i].chars);
+        clone.delete(this.ops[i].chars!);
       }
     }
     return clone;
@@ -355,7 +359,7 @@ export class TextOperation {
 
   /** Converts operation into a JSON value. */
   public toJSON() {
-    let ops = [];
+    const ops = [];
     for (let i = 0; i < this.ops.length; i++) {
       // We prefix ops with their attributes if non-empty.
       if (!this.ops[i].hasEmptyAttributes()) {
@@ -366,32 +370,39 @@ export class TextOperation {
       } else if (this.ops[i].type === 'insert') {
         ops.push(this.ops[i].text);
       } else if (this.ops[i].type === 'delete') {
-        ops.push(-this.ops[i].chars);
+        ops.push(-this.ops[i].chars!);
       }
     }
-    // Return an array with /something/ in it, since an empty array will be treated as null by Firebase.
+    // Return an array with something in it -> an empty array will be treated as null by Firebase.
     if (ops.length === 0) {
       ops.push(0);
     }
     return ops;
   }
 
-  // Apply an operation to a string, returning a new string. Throws an error if
-  // there's a mismatch between the input string and the operation.
-  public apply(str: string, oldAttributes = [], newAttributes = []) {
+  /**
+   * Apply an operation to a string, returning a new string. Throws an error
+   * if there's a mismatch between the input string and the operation.
+   */
+  public apply(
+    str: string,
+    oldAttributes: Record<string, any>[] = [],
+    newAttributes: Record<string, any>[] = []
+  ) {
     let operation = this;
     if (str.length !== operation.baseLength) {
       throw new Error("The operation's base length must be equal to the string's length.");
     }
-    let newStringParts = [];
+    const newStringParts = [];
+    const ops = this.ops;
     let j = 0;
-    let k;
-    let attr;
     let oldIndex = 0;
-    let ops = this.ops;
 
     for (let i = 0, l = ops.length; i < l; i++) {
       let op = ops[i];
+      if (!op.chars) {
+        throw new Error(`Operation has bad chars: ${op.chars}`);
+      }
       if (op.isRetain()) {
         if (oldIndex + op.chars > str.length) {
           throw new Error("Operation can't retain more characters than are left in the string.");
@@ -400,49 +411,50 @@ export class TextOperation {
         newStringParts[j++] = str.slice(oldIndex, oldIndex + op.chars);
 
         // Copy (and potentially update) attributes for each char in retained string.
-        for (k = 0; k < op.chars; k++) {
-          let currAttributes = oldAttributes[oldIndex + k] || {},
-            updatedAttributes = {};
-          for (attr in currAttributes) {
+        for (let k = 0; k < op.chars; k++) {
+          const currAttributes = oldAttributes[oldIndex + k] || {};
+          const updatedAttributes: Record<string, any> = {};
+          for (let attr in currAttributes) {
             updatedAttributes[attr] = currAttributes[attr];
-            utils.assert(updatedAttributes[attr] !== false);
+            assert(updatedAttributes[attr] !== false);
           }
-          for (attr in op.attributes) {
-            if (op.attributes[attr] === false) {
-              delete updatedAttributes[attr];
-            } else {
-              updatedAttributes[attr] = op.attributes[attr];
+          if (op.attributes) {
+            for (let attr in op.attributes) {
+              if (op.attributes[attr] === false) {
+                delete updatedAttributes[attr];
+              } else {
+                updatedAttributes[attr] = op.attributes[attr];
+              }
+              assert(updatedAttributes[attr] !== false);
             }
-            utils.assert(updatedAttributes[attr] !== false);
           }
           newAttributes.push(updatedAttributes);
         }
-
         oldIndex += op.chars;
       } else if (op.isInsert()) {
-        // Insert string.
-        newStringParts[j++] = op.text;
-
-        // Insert attributes for each char.
-        for (k = 0; k < op.text.length; k++) {
-          let insertedAttributes = {};
-          for (attr in op.attributes) {
-            insertedAttributes[attr] = op.attributes[attr];
-            utils.assert(insertedAttributes[attr] !== false);
+        newStringParts[j++] = op.text; // Insert string
+        if (op.text) {
+          // Insert attributes for each char
+          for (let k = 0; k < op.text.length; k++) {
+            const insertedAttributes: Record<string, any> = {};
+            if (op.attributes) {
+              for (let attr in op.attributes) {
+                assert(insertedAttributes[attr] !== false);
+                insertedAttributes[attr] = op.attributes[attr];
+              }
+            }
+            newAttributes.push(insertedAttributes);
           }
-          newAttributes.push(insertedAttributes);
         }
       } else {
-        // delete op
-        oldIndex += op.chars;
+        oldIndex += op.chars; // Op is delete type
       }
     }
     if (oldIndex !== str.length) {
       throw new Error("The operation didn't operate on the whole string.");
     }
-    let newString = newStringParts.join('');
-    utils.assert(newString.length === newAttributes.length);
-
+    const newString = newStringParts.join('');
+    assert(newString.length === newAttributes.length);
     return newString;
   }
 
@@ -450,21 +462,21 @@ export class TextOperation {
   // operation that reverts the effects of the operation, e.g. when you have an
   // operation 'insert("hello "); skip(6);' then the inverse is 'delete("hello ");
   // skip(6);'. The inverse should be used for implementing undo.
-  public invert(str) {
+  public invert(str: string) {
+    const inverse = new TextOperation();
+    const length = this.ops.length;
     let strIndex = 0;
-    let inverse = new TextOperation();
-    let ops = this.ops;
-    for (let i = 0, l = ops.length; i < l; i++) {
-      let op = ops[i];
+    for (let i = 0; i < length; i++) {
+      const op = this.ops[i];
       if (op.isRetain()) {
-        inverse.retain(op.chars);
-        strIndex += op.chars;
+        inverse.retain(op.chars!);
+        strIndex += op.chars!;
       } else if (op.isInsert()) {
-        inverse.delete(op.text.length);
+        inverse.delete(op.text!.length);
       } else {
-        // delete op
-        inverse.insert(str.slice(strIndex, strIndex + op.chars));
-        strIndex += op.chars;
+        // Operation is delete type
+        inverse.insert(str.slice(strIndex, strIndex + op.chars!));
+        strIndex += op.chars!;
       }
     }
     return inverse;
@@ -482,13 +494,16 @@ export class TextOperation {
       );
     }
 
-    function composeAttributes(first, second, firstOpIsInsert) {
-      let merged = {},
-        attr;
-      for (attr in first) {
+    const composeAttributes = (
+      first?: Record<string, any> | null,
+      second?: Record<string, any> | null,
+      firstOpIsInsert?: boolean
+    ) => {
+      const merged: Record<string, any> = {};
+      for (let attr in first) {
         merged[attr] = first[attr];
       }
-      for (attr in second) {
+      for (let attr in second) {
         if (firstOpIsInsert && second[attr] === false) {
           delete merged[attr];
         } else {
@@ -496,24 +511,22 @@ export class TextOperation {
         }
       }
       return merged;
-    }
+    };
 
-    let operation = new TextOperation(); // the combined operation
-    let ops1 = operation1.clone().ops,
-      ops2 = operation2.clone().ops;
-    let i1 = 0,
-      i2 = 0; // current index into ops1 respectively ops2
-    let op1 = ops1[i1++],
-      op2 = ops2[i2++]; // current ops
+    const operation = new TextOperation(); // the combined operation
+    const ops1 = operation1.clone().ops;
+    const ops2 = operation2.clone().ops;
+    let i1 = 0;
+    let i2 = 0; // current index into ops1 respectively ops2
+    let op1 = ops1[i1++];
+    let op2 = ops2[i2++]; // current ops
     let attributes;
     while (true) {
       // Dispatch on the type of op1 and op2
       if (typeof op1 === 'undefined' && typeof op2 === 'undefined') {
-        // end condition: both ops1 and ops2 have been processed
-        break;
+        break; // end condition: both ops1 and ops2 have been processed
       }
-
-      if (op1 && op1.isDelete()) {
+      if (op1 && op1.isDelete() && op1.chars) {
         operation.delete(op1.chars);
         op1 = ops1[i1++];
         continue;
@@ -523,16 +536,15 @@ export class TextOperation {
         op2 = ops2[i2++];
         continue;
       }
-
       if (typeof op1 === 'undefined') {
         throw new Error('Cannot compose operations: first operation is too short.');
       }
       if (typeof op2 === 'undefined') {
         throw new Error('Cannot compose operations: first operation is too long.');
       }
-
       if (op1.isRetain() && op2.isRetain()) {
         attributes = composeAttributes(op1.attributes, op2.attributes);
+        assert(typeof op1.chars === 'number' && typeof op2.chars === 'number');
         if (op1.chars > op2.chars) {
           operation.retain(op2.chars, attributes);
           op1.chars -= op2.chars;
@@ -547,6 +559,7 @@ export class TextOperation {
           op1 = ops1[i1++];
         }
       } else if (op1.isInsert() && op2.isDelete()) {
+        assert(typeof op1.text === 'string' && typeof op2.chars === 'number');
         if (op1.text.length > op2.chars) {
           op1.text = op1.text.slice(op2.chars);
           op2 = ops2[i2++];
@@ -558,7 +571,8 @@ export class TextOperation {
           op1 = ops1[i1++];
         }
       } else if (op1.isInsert() && op2.isRetain()) {
-        attributes = composeAttributes(op1.attributes, op2.attributes, /* firstOpIsInsert=*/ true);
+        attributes = composeAttributes(op1.attributes, op2.attributes, true);
+        assert(typeof op1.text === 'string' && typeof op2.chars === 'number');
         if (op1.text.length > op2.chars) {
           operation.insert(op1.text.slice(0, op2.chars), attributes);
           op1.text = op1.text.slice(op2.chars);
@@ -573,6 +587,7 @@ export class TextOperation {
           op1 = ops1[i1++];
         }
       } else if (op1.isRetain() && op2.isDelete()) {
+        assert(typeof op1.chars === 'number' && typeof op2.chars === 'number');
         if (op1.chars > op2.chars) {
           operation.delete(op2.chars);
           op1.chars -= op2.chars;
@@ -607,56 +622,48 @@ export class TextOperation {
     if (this.isNoop() || other.isNoop()) {
       return true;
     }
-
-    let startA = getStartIndex(this);
-    let startB = getStartIndex(other);
-    let simpleA = getSimpleOp(this);
-    let simpleB = getSimpleOp(other);
+    const startA = getStartIndex(this);
+    const startB = getStartIndex(other);
+    const simpleA = getSimpleOp(this);
+    const simpleB = getSimpleOp(other);
     if (!simpleA || !simpleB) {
       return false;
     }
-
-    if (simpleA.isInsert() && simpleB.isInsert()) {
+    if (simpleA.isInsert() && simpleB.isInsert() && simpleA.text) {
       return startA + simpleA.text.length === startB;
     }
-
-    if (simpleA.isDelete() && simpleB.isDelete()) {
-      // there are two possibilities to delete: with backspace and with the
-      // delete key.
+    if (simpleA.isDelete() && simpleB.isDelete() && simpleB.chars) {
+      // There are two possibilities to delete: with backspace and with the delete key
       return startB + simpleB.chars === startA || startA === startB;
     }
-
     return false;
   }
 
-  // Decides whether two operations should be composed with each other
-  // if they were inverted, that is
-  // `shouldBeComposedWith(a, b) = shouldBeComposedWithInverted(b^{-1}, a^{-1})`.
-  shouldBeComposedWithInverted(other) {
+  /**
+   * Decides whether two operations should be composed with each other if they were
+   * inverted -> `shouldBeComposedWith(a, b) = shouldBeComposedWithInverted(b^{-1}, a^{-1})`.
+   */
+  shouldBeComposedWithInverted(other: TextOperation) {
     if (this.isNoop() || other.isNoop()) {
       return true;
     }
-
-    let startA = getStartIndex(this);
-    let startB = getStartIndex(other);
-    let simpleA = getSimpleOp(this);
-    let simpleB = getSimpleOp(other);
+    const startA = getStartIndex(this);
+    const startB = getStartIndex(other);
+    const simpleA = getSimpleOp(this);
+    const simpleB = getSimpleOp(other);
     if (!simpleA || !simpleB) {
       return false;
     }
-
-    if (simpleA.isInsert() && simpleB.isInsert()) {
+    if (simpleA.isInsert() && simpleB.isInsert() && simpleA.text) {
       return startA + simpleA.text.length === startB || startA === startB;
     }
-
-    if (simpleA.isDelete() && simpleB.isDelete()) {
+    if (simpleA.isDelete() && simpleB.isDelete() && simpleB.chars) {
       return startB + simpleB.chars === startA;
     }
-
     return false;
   }
 
-  // convenience method to write transform(a, b) as a.transform(b)
+  /** Convenience method to write transform(a, b) as a.transform(b) */
   transform(other: TextOperation) {
     return TextOperation.transform(this, other);
   }
