@@ -1,16 +1,20 @@
 import {TextOperation} from '../operations/text-operation';
 import {Synchronized} from './states/synchronized';
+import {AwaitingWithBuffer} from './states/awaiting-buffer';
+import {AwaitingConfirm} from './states/awaiting-confirm';
 
 export abstract class Client {
-  public state: Synchronized;
+  public state: Synchronized | AwaitingConfirm | AwaitingWithBuffer;
+  public initialState: Synchronized;
   // static Synchronized: Synchronized;
   // static AwaitingWithBuffer: any;
 
   constructor() {
-    this.state = new Synchronized(); // start state
+    this.initialState = new Synchronized();
+    this.state = this.initialState; // start state
   }
 
-  setState(state: Synchronized) {
+  setState(state: Synchronized | AwaitingConfirm | AwaitingWithBuffer) {
     this.state = state;
   }
 

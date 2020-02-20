@@ -171,7 +171,8 @@ export class FirebaseAdapter {
         .child(revisionId)
         .transaction(
           (current: any) => {
-            if (current === null) {
+            // if (current === null) {
+            if (current === null || current === undefined) {
               return revisionData;
             }
           },
@@ -265,7 +266,8 @@ export class FirebaseAdapter {
       let revisionId = s.child('id').val(),
         op = s.child('o').val(),
         author = s.child('a').val();
-      if (op !== null && revisionId !== null && author !== null) {
+      // if (op !== null && revisionId !== null && author !== null) {
+      if (op && revisionId && author) {
         this.pendingReceivedRevisions_[revisionId] = {o: op, a: author};
         this.checkpointRevision_ = revisionFromId(revisionId);
         this.monitorHistoryStartingAt_(this.checkpointRevision_ + 1);
@@ -295,16 +297,19 @@ export class FirebaseAdapter {
   handleInitialRevisions_() {
     assert(!this.ready_, 'Should not be called multiple times.');
 
+    // console.log('handle initial revisions');
+
     // Compose the checkpoint and all subsequent revisions into a single operation to apply at once.
     this.revision_ = this.checkpointRevision_;
     let revisionId = revisionToId(this.revision_);
     let pending = this.pendingReceivedRevisions_;
 
-    while (pending[revisionId] !== null) {
+    while (pending[revisionId]) {
       let revision = this.parseRevision_(pending[revisionId]);
       if (!revision) {
         // If a misbehaved client adds a bad operation, just ignore it.
         console.log('Invalid operation.', this.ref_.toString(), revisionId, pending[revisionId]);
+        throw new Error('wow');
       } else {
         this.document_ = this.document_.compose(revision.operation);
       }
@@ -326,12 +331,15 @@ export class FirebaseAdapter {
     let revisionId = revisionToId(this.revision_);
     let triggerRetry = false;
 
-    while (pending[revisionId] !== null) {
+    // console.log('handle received revisions');
+
+    while (pending[revisionId]) {
       this.revision_++;
       let revision = this.parseRevision_(pending[revisionId]);
       if (!revision) {
         // If a misbehaved client adds a bad operation, just ignore it.
         console.log('Invalid operation.', this.ref_.toString(), revisionId, pending[revisionId]);
+        throw new Error('wowzers');
       } else {
         this.document_ = this.document_.compose(revision.operation);
         if (this.sent_ && revisionId === this.sent_.id) {

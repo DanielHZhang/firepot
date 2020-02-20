@@ -98,9 +98,9 @@ export class Firepot {
     });
     this.firebaseAdapter_.on('ready', () => {
       this.ready_ = true;
-      if (this.monaco_) {
-        this.editorAdapter_.grabDocumentState();
-      }
+      // if (this.monaco_) {
+      //   this.editorAdapter_.grabDocumentState();
+      // }
       let defaultText = this.getOption('defaultText', null);
       if (defaultText && this.isHistoryEmpty()) {
         this.setText(defaultText);

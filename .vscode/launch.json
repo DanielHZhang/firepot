@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
-  "configurations": [{
+  "configurations": [
+    {
       "type": "node",
       "request": "launch",
       "name": "Launch via Nodemon",
@@ -26,14 +27,32 @@
       "request": "launch",
       "name": "Launch via Chrome",
       "url": "http://localhost:8080/",
-      "webRoot": "${workspaceRoot}/src/"
+      "webRoot": "${workspaceRoot}/public",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///./src/*.ts": "${workspaceRoot}/src/*.ts",
+        "webpack:///./test/*.ts": "${workspaceRoot}/test/*.ts",
+        "webpack:///./node_modules/*": "${workspaceRoot}/node_modules/*"
+      }
     },
     {
       "type": "chrome",
       "request": "attach",
       "name": "Attach to Chrome",
       "port": 9222,
-      "webRoot": "${workspaceFolder}/src/"
+      "webRoot": "${workspaceFolder}/public",
+      "sourceMaps": true
     },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "build",
+      "program": "${workspaceFolder}/node_modules/.bin/webpack-cli",
+      "args": [
+        "--config",
+        "webpack.config.js"
+      ],
+      "autoAttachChildProcesses": true
+    }
   ]
 }

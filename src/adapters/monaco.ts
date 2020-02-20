@@ -1,6 +1,7 @@
 import {editor, Selection, IDisposable, Range} from 'monaco-editor';
 import {MonacoCursor} from '../constants';
 import {TextOperation} from '../operations/text-operation';
+import {Cursor} from '../managers/cursor';
 
 export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
@@ -80,7 +81,7 @@ export class MonacoAdapter {
     }
 
     /** Return cursor position */
-    return new firepad.Cursor(start, end);
+    return new Cursor(start, end);
   }
 
   /** Set Selection on Monaco Editor Instance */

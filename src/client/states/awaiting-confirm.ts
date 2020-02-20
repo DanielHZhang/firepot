@@ -1,6 +1,7 @@
 import {AwaitingWithBuffer} from './awaiting-buffer';
 import {Client} from '../client';
 import {TextOperation} from '../../operations/text-operation';
+import {Synchronized} from './synchronized';
 
 /**
  * In the 'AwaitingConfirm' state, there's one operation the client has sent
@@ -39,7 +40,7 @@ export class AwaitingConfirm {
   serverAck(client: Client) {
     // The client's operation has been acknowledged
     // => switch to synchronized state
-    return synchronized_;
+    return client.initialState;
   }
 
   serverRetry(client: Client) {
