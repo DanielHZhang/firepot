@@ -9,7 +9,7 @@ function copy(source: Record<any, any>, target: Record<any, any>) {
   }
 }
 
-function composeMeta(a: {compose: Function}, b: any) {
+function composeMeta(a: Meta, b: any) {
   if (a && typeof a === 'object') {
     if (typeof a.compose === 'function') {
       return a.compose(b);
@@ -22,7 +22,7 @@ function composeMeta(a: {compose: Function}, b: any) {
   return b;
 }
 
-function transformMeta(meta: {transform: Function}, operation: TextOperation) {
+function transformMeta(meta?: Meta, operation?: TextOperation) {
   if (meta && typeof meta === 'object') {
     if (typeof meta.transform === 'function') {
       return meta.transform(operation);
@@ -34,11 +34,12 @@ function transformMeta(meta: {transform: Function}, operation: TextOperation) {
 type Meta = {
   transform?: Function;
   compose?: Function;
+  invert?: Function;
 };
 
 export class WrappedOperation {
   public wrapped: TextOperation;
-  public meta: any;
+  public meta?: Meta | null;
 
   // A WrappedOperation contains an operation and corresponing metadata.
   constructor(operation: TextOperation, meta?: Meta | null) {
@@ -52,8 +53,8 @@ export class WrappedOperation {
   ): [WrappedOperation, WrappedOperation] {
     const pair = a.wrapped.transform(b.wrapped);
     return [
-      new WrappedOperation(pair[0], transformMeta(a.meta, b.wrapped)),
-      new WrappedOperation(pair[1], transformMeta(b.meta, a.wrapped)),
+      new WrappedOperation(pair[0], transformMeta(a.meta!, b.wrapped)),
+      new WrappedOperation(pair[1], transformMeta(b.meta!, a.wrapped)),
     ];
   }
 
@@ -62,24 +63,24 @@ export class WrappedOperation {
     return WrappedOperation.transform(this, other);
   }
 
-  apply() {
-    return this.wrapped.apply.apply(this.wrapped, arguments);
+  public apply(...args: [string, Record<string, any>[]?, Record<string, any>[]?]) {
+    return this.wrapped.apply(...args);
+    // return this.wrapped.apply.apply(this.wrapped, arguments);
   }
 
-  invert() {
-    const meta = this.meta;
-    return new WrappedOperation(
-      this.wrapped.invert.apply(this.wrapped, arguments),
-      meta && typeof meta === 'object' && typeof meta.invert === 'function'
-        ? meta.invert.apply(meta, arguments)
-        : meta
-    );
+  public invert(str: string) {
+    const newMeta =
+      this.meta && typeof this.meta === 'object' && typeof this.meta.invert === 'function'
+        ? this.meta.invert(str)
+        : this.meta;
+    // this.wrapped.invert.apply(this.wrapped, arguments),
+    return new WrappedOperation(this.wrapped.invert(str), newMeta);
   }
 
-  compose(other: WrappedOperation) {
+  public compose(other: WrappedOperation) {
     return new WrappedOperation(
       this.wrapped.compose(other.wrapped),
-      composeMeta(this.meta, other.meta)
+      composeMeta(this.meta!, other.meta)
     );
   }
 }
