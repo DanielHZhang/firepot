@@ -4,7 +4,7 @@ const path = require('path');
 module.exports = {
   mode: 'development',
   devServer: {
-    contentBase: 'public/',
+    contentBase: path.join(process.cwd(), 'test'),
   },
   devtool: 'source-map',
   entry: {
@@ -12,7 +12,6 @@ module.exports = {
     app: path.join(process.cwd(), 'test', 'index.ts'),
   },
   output: {
-    // path: path.join(process.cwd(), 'dist'),
     filename: '[name].js',
   },
   resolve: {
