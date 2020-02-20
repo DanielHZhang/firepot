@@ -5,21 +5,21 @@ import {elt, on, stopEvent, makeEventEmitter} from './utils';
 import {FirebaseAdapter} from './adapters/firebase';
 import {EditorClient} from './client/editor-client';
 
-function rgb2hex(r, g, b) {
-  function digits(n) {
-    let m = Math.round(255 * n).toString(16);
+function rgb2hex(r: number, g: number, b: number) {
+  const digits = (n: number) => {
+    const m = Math.round(255 * n).toString(16);
     return m.length === 1 ? '0' + m : m;
-  }
+  };
   return '#' + digits(r) + digits(g) + digits(b);
 }
 
-function hsl2hex(h, s, l) {
+function hsl2hex(h: number, s: number, l: number) {
   if (s === 0) {
     return rgb2hex(l, l, l);
   }
-  let let2 = l < 0.5 ? l * (1 + s) : l + s - s * l;
-  let let1 = 2 * l - let2;
-  let hue2rgb = function(hue) {
+  const let2 = l < 0.5 ? l * (1 + s) : l + s - s * l;
+  const let1 = 2 * l - let2;
+  const hue2rgb = (hue: number) => {
     if (hue < 0) {
       hue += 1;
     }
@@ -40,13 +40,12 @@ function hsl2hex(h, s, l) {
   return rgb2hex(hue2rgb(h + 1 / 3), hue2rgb(h), hue2rgb(h - 1 / 3));
 }
 
-function colorFromUserId(userId) {
+function colorFromUserId(userId: string) {
   let a = 1;
   for (let i = 0; i < userId.length; i++) {
     a = (17 * (a + userId.charCodeAt(i))) % 360;
   }
-  let hue = a / 360;
-
+  const hue = a / 360;
   return hsl2hex(hue, 1, 0.75);
 }
 
@@ -59,35 +58,37 @@ export class Firepot {
   public client_: EditorClient;
   public options_: Record<string, any>;
   public editorAdapter_: MonacoAdapter;
-  public ready_: boolean;
   public editorWrapper: HTMLElement;
+  public ready_?: boolean;
 
-  constructor(ref: database.Reference, place: editor.IStandaloneCodeEditor, options?: any) {
+  constructor(
+    ref: database.Reference,
+    place: editor.IStandaloneCodeEditor,
+    options: Record<string, any> = {}
+  ) {
     this.zombie_ = false;
     this.monaco_ = place;
     this.editor_ = place;
+    this.options_ = options;
 
     const currentValue = this.monaco_.getValue();
     if (currentValue) {
       throw new Error(
-        "Can't initialize Firepad with a Monaco instance that already contains text."
+        "Can't initialize Firepot with a Monaco instance that already contains text."
       );
     }
 
-    const editorWrapper = this.monaco_.getDomNode()!;
-    this.editorWrapper = editorWrapper;
+    this.editorWrapper = this.monaco_.getDomNode()!;
     this.firepadWrapper_ = elt('div', null, {class: 'firepad'});
-    editorWrapper?.parentNode?.replaceChild(this.firepadWrapper_, editorWrapper);
-    this.firepadWrapper_.appendChild(editorWrapper);
+    this.editorWrapper.parentNode?.replaceChild(this.firepadWrapper_, this.editorWrapper);
+    this.firepadWrapper_.appendChild(this.editorWrapper);
 
     // Don't allow drag/drop because it causes issues.
     // See https://github.com/firebase/firepad/issues/36
-    on(editorWrapper, 'dragstart', stopEvent);
+    this.editorWrapper.addEventListener('dragstart', stopEvent);
 
-    this.options_ = options || {};
-
-    let userId = this.getOption('userId', ref.push().key);
-    let userColor = this.getOption('userColor', colorFromUserId(userId));
+    const userId = this.getOption('userId', ref.push().key);
+    const userColor = this.getOption('userColor', colorFromUserId(userId));
 
     this.firebaseAdapter_ = new FirebaseAdapter(ref, userId, userColor);
     this.editorAdapter_ = new MonacoAdapter(this.monaco_);
@@ -115,55 +116,48 @@ export class Firepot {
 
   dispose() {
     this.zombie_ = true; // We've been disposed.  No longer valid to do anything.
-    this.editorWrapper = this.monaco_.getDomNode()!;
-
-    this.firepadWrapper_.removeChild(editorWrapper);
-    this.firepadWrapper_.parentNode.replaceChild(editorWrapper, this.firepadWrapper_);
-
-    this.editor_.firepad = null;
+    this.editorWrapper.removeEventListener('dragstart', stopEvent);
+    this.firepadWrapper_.removeChild(this.editorWrapper);
+    this.firepadWrapper_.parentNode?.replaceChild(this.editorWrapper, this.firepadWrapper_);
     this.firebaseAdapter_.dispose();
     this.editorAdapter_.detach();
   }
 
-  setUserId(userId) {
+  setUserId(userId: string | number) {
     this.firebaseAdapter_.setUserId(userId);
   }
 
-  setUserColor(color) {
+  setUserColor(color: string) {
     this.firebaseAdapter_.setColor(color);
   }
 
-  getText() {
-    this.assertReady_('getText');
-    return this.monaco_.getModel().getValue();
-  }
+  // public getText() {
+  //   this.assertReady_('getText');
+  //   return this.monaco_.getModel()?.getValue();
+  // }
 
-  setText(textPieces) {
+  public setText(textPieces: any) {
     this.assertReady_('setText');
-    return this.monaco_.getModel().setValue(textPieces);
-    this.editorAdapter_.setCursor({position: 0, selectionEnd: 0});
+    return this.monaco_.getModel()?.setValue(textPieces);
+    // this.editorAdapter_.setCursor({position: 0, selectionEnd: 0});
   }
 
-  isHistoryEmpty() {
+  public isHistoryEmpty() {
     this.assertReady_('isHistoryEmpty');
     return this.firebaseAdapter_.isHistoryEmpty();
   }
 
-  // registerEntity(type, options) {
-  //   this.entityManager_.register(type, options);
-  // }
-
-  getOption(option, def) {
+  public getOption(option: string, def: any) {
     return option in this.options_ ? this.options_[option] : def;
   }
 
-  assertReady_(funcName) {
+  public assertReady_(funcName: string) {
     if (!this.ready_) {
-      throw new Error('You must wait for the "ready" event before calling ' + funcName + '.');
+      throw new Error('You must wait for the "ready" event before calling ' + funcName);
     }
     if (this.zombie_) {
       throw new Error(
-        "You can't use a Firepad after calling dispose()!  [called " + funcName + ']'
+        "You can't use a Firepot after calling dispose()!  [called " + funcName + ']'
       );
     }
   }

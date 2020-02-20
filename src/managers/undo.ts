@@ -44,7 +44,7 @@ export class UndoManager {
    * is true, compose the operation with the last operation unless the last operation was
    * already pushed on the redo stack or was hidden by a newer operation on the undo stack.
    */
-  add(operation: WrappedOperation, compose?: any) {
+  add(operation: WrappedOperation, compose?: boolean) {
     if (this.state === UNDOING_STATE) {
       this.redoStack.push(operation);
       this.dontCompose = true;
@@ -76,22 +76,22 @@ export class UndoManager {
    * stack. The function is expected to call the `add` method with the inverse
    * of the operation, which pushes the inverse on the redo stack.
    */
-  performUndo(fn: (o?: WrappedOperation) => any) {
+  performUndo(fn: (o: WrappedOperation) => any) {
     this.state = UNDOING_STATE;
     if (this.undoStack.length === 0) {
       throw new Error('undo not possible');
     }
-    fn(this.undoStack.pop());
+    fn(this.undoStack.pop()!);
     this.state = NORMAL_STATE;
   }
 
   /** The inverse of `performUndo`. */
-  performRedo(fn: (o?: WrappedOperation) => any) {
+  performRedo(fn: (o: WrappedOperation) => any) {
     this.state = REDOING_STATE;
     if (this.redoStack.length === 0) {
       throw new Error('redo not possible');
     }
-    fn(this.redoStack.pop());
+    fn(this.redoStack.pop()!);
     this.state = NORMAL_STATE;
   }
 

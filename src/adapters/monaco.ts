@@ -3,6 +3,7 @@ import {MonacoCursor} from '../constants';
 import {TextOperation} from '../operations/text';
 import {Cursor} from '../managers/cursor';
 import {assert} from '../utils';
+import {WrappedOperation} from '../operations/wrapped';
 
 export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
@@ -311,7 +312,7 @@ export class MonacoAdapter {
     this.ignoreChanges = false;
   }
 
-  public invertOperation(operation: TextOperation) {
-    operation.invert(this.monaco.getValue());
+  public invertOperation(operation: WrappedOperation) {
+    return operation.invert(this.monaco.getValue());
   }
 }

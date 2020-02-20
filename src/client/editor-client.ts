@@ -10,7 +10,9 @@ import {OtherClient} from './other';
 import {MonacoAdapter} from '../adapters/monaco';
 import {FirebaseAdapter} from '../adapters/firebase';
 import {SelfMeta} from './self-meta';
+import {EventEmitter} from '../constants';
 
+export interface EditorClient extends EventEmitter {}
 export class EditorClient extends Client {
   public serverAdapter: FirebaseAdapter;
   public editorAdapter: MonacoAdapter;
@@ -86,10 +88,10 @@ export class EditorClient extends Client {
     return (this.clients[clientId] = new OtherClient(clientId, this.editorAdapter));
   }
 
-  applyUnredo(operation?: WrappedOperation) {
+  applyUnredo(operation: WrappedOperation) {
     this.undoManager.add(this.editorAdapter.invertOperation(operation));
     this.editorAdapter.applyOperation(operation.wrapped);
-    this.cursor = operation.meta.cursorAfter;
+    this.cursor = operation.meta!.cursorAfter;
     if (this.cursor) {
       this.editorAdapter.setCursor(this.cursor);
     }
@@ -111,7 +113,6 @@ export class EditorClient extends Client {
   onChange(textOperation: TextOperation, inverse: TextOperation) {
     const cursorBefore = this.cursor;
     this.updateCursor();
-
     const compose =
       this.undoManager.undoStack.length > 0 &&
       inverse.shouldBeComposedWithInverted(
@@ -165,9 +166,7 @@ export class EditorClient extends Client {
   }
 
   emitStatus() {
-    setTimeout(() => {
-      this.trigger('synced', this.state instanceof Synchronized);
-    }, 0);
+    setTimeout(() => this.trigger('synced', this.state instanceof Synchronized), 0);
   }
 }
 

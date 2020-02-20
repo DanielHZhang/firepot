@@ -1,14 +1,24 @@
-type Class = {new (...args: any[]): any};
-
-type HasEventListener = {
-  addEventListener: (type: string, f: Function, capture?: boolean) => void;
-  attachEvent: (type: string, f: Function) => void;
-  removeEventListener: (type: string, f: Function, capture?: boolean) => void;
-  detachEvent: (type: string, f: Function) => void;
+type Class = {
+  new (...args: any[]): any;
 };
 
 export function makeEventEmitter<T extends Class>(extendable: T, allowedEvents?: string[]) {
   extendable.prototype.allowedEvents_ = allowedEvents;
+
+  extendable.prototype.validateEventType_ = function(eventType: string) {
+    if (this.allowedEvents_) {
+      let allowed = false;
+      for (let i = 0; i < this.allowedEvents_.length; i++) {
+        if (this.allowedEvents_[i] === eventType) {
+          allowed = true;
+          break;
+        }
+      }
+      if (!allowed) {
+        throw new Error('Unknown event "' + eventType + '"');
+      }
+    }
+  };
 
   extendable.prototype.on = function(eventType: string, callback: Function, context: any) {
     this.validateEventType_(eventType);
@@ -29,28 +39,16 @@ export function makeEventEmitter<T extends Class>(extendable: T, allowedEvents?:
     }
   };
 
-  extendable.prototype.trigger = function(eventType: string) {
+  extendable.prototype.trigger = function(eventType: string, ...args: any[]) {
     this.eventListeners_ = this.eventListeners_ || {};
-    let listeners = this.eventListeners_[eventType] || [];
+    const listeners: {callback: Function; context: any}[] = this.eventListeners_[eventType] || [];
     for (let i = 0; i < listeners.length; i++) {
-      listeners[i].callback.apply(listeners[i].context, Array.prototype.slice.call(arguments, 1));
+      listeners[i].callback.apply(listeners[i].context, args);
+      // listeners[i].callback.apply(listeners[i].context, Array.prototype.slice.call(arguments, 1));
     }
   };
 
-  extendable.prototype.validateEventType_ = function(eventType: string) {
-    if (this.allowedEvents_) {
-      let allowed = false;
-      for (let i = 0; i < this.allowedEvents_.length; i++) {
-        if (this.allowedEvents_[i] === eventType) {
-          allowed = true;
-          break;
-        }
-      }
-      if (!allowed) {
-        throw new Error('Unknown event "' + eventType + '"');
-      }
-    }
-  };
+  return extendable;
 }
 
 export function setTextContent(e: HTMLElement, str: string) {
@@ -71,32 +69,6 @@ export function elt(tag: string, content: string | Node[] | null, attrs: Record<
     e.setAttribute(attr, attrs[attr]);
   }
   return e;
-}
-
-export function on(
-  emitter: HasEventListener,
-  type: string,
-  callback: Function,
-  capture: boolean = false
-) {
-  if (emitter.addEventListener) {
-    emitter.addEventListener(type, callback, capture);
-  } else if (emitter.attachEvent) {
-    emitter.attachEvent('on' + type, callback);
-  }
-}
-
-export function off(
-  emitter: HasEventListener,
-  type: string,
-  callback: Function,
-  capture: boolean = false
-) {
-  if (emitter.removeEventListener) {
-    emitter.removeEventListener(type, callback, capture);
-  } else if (emitter.detachEvent) {
-    emitter.detachEvent('on' + type, callback);
-  }
 }
 
 export function stopEvent(e: Event) {

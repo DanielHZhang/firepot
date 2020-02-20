@@ -1,4 +1,5 @@
 import {TextOperation} from './text';
+import {SelfMeta} from '../client/self-meta';
 
 // Copy all properties from source to target.
 function copy(source: Record<any, any>, target: Record<any, any>) {
@@ -9,7 +10,7 @@ function copy(source: Record<any, any>, target: Record<any, any>) {
   }
 }
 
-function composeMeta(a: Meta, b: any) {
+function composeMeta(a: SelfMeta, b: any) {
   if (a && typeof a === 'object') {
     if (typeof a.compose === 'function') {
       return a.compose(b);
@@ -22,27 +23,21 @@ function composeMeta(a: Meta, b: any) {
   return b;
 }
 
-function transformMeta(meta?: Meta, operation?: TextOperation) {
+function transformMeta(meta?: SelfMeta, operation?: TextOperation) {
   if (meta && typeof meta === 'object') {
     if (typeof meta.transform === 'function') {
-      return meta.transform(operation);
+      return meta.transform(operation!);
     }
   }
   return meta;
 }
 
-type Meta = {
-  transform?: Function;
-  compose?: Function;
-  invert?: Function;
-};
-
 export class WrappedOperation {
   public wrapped: TextOperation;
-  public meta?: Meta | null;
+  public meta?: SelfMeta | null;
 
   // A WrappedOperation contains an operation and corresponing metadata.
-  constructor(operation: TextOperation, meta?: Meta | null) {
+  constructor(operation: TextOperation, meta?: SelfMeta | null) {
     this.wrapped = operation;
     this.meta = meta;
   }
@@ -71,7 +66,7 @@ export class WrappedOperation {
   public invert(str: string) {
     const newMeta =
       this.meta && typeof this.meta === 'object' && typeof this.meta.invert === 'function'
-        ? this.meta.invert(str)
+        ? this.meta.invert()
         : this.meta;
     // this.wrapped.invert.apply(this.wrapped, arguments),
     return new WrappedOperation(this.wrapped.invert(str), newMeta);
