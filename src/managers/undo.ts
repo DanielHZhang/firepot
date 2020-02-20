@@ -24,7 +24,7 @@ export class UndoManager {
   public undoStack: WrappedOperation[];
   public redoStack: WrappedOperation[];
 
-  // Create a new UndoManager with an optional maximum history size.
+  /** Create a new UndoManager with an optional maximum history size. */
   constructor(maxItems?: number) {
     this.maxItems = maxItems ?? 50;
     this.state = NORMAL_STATE;
@@ -33,11 +33,16 @@ export class UndoManager {
     this.redoStack = [];
   }
 
-  // Add an operation to the undo or redo stack, depending on the current state
-  // of the UndoManager. The operation added must be the inverse of the last
-  // edit. When `compose` is true, compose the operation with the last operation
-  // unless the last operation was alread pushed on the redo stack or was hidden
-  // by a newer operation on the undo stack.
+  static wow() {
+    console.log();
+  }
+
+  /**
+   * Add an operation to the undo or redo stack, depending on the current state of the
+   * UndoManager. The operation added must be the inverse of the last edit. When `compose`
+   * is true, compose the operation with the last operation unless the last operation was
+   * already pushed on the redo stack or was hidden by a newer operation on the undo stack.
+   */
   add(operation: WrappedOperation, compose?: any) {
     if (this.state === UNDOING_STATE) {
       this.redoStack.push(operation);
@@ -46,13 +51,12 @@ export class UndoManager {
       this.undoStack.push(operation);
       this.dontCompose = true;
     } else {
-      let undoStack = this.undoStack;
-      if (!this.dontCompose && compose && undoStack.length > 0) {
-        undoStack.push(operation.compose(undoStack.pop()));
+      if (!this.dontCompose && compose && this.undoStack.length > 0) {
+        this.undoStack.push(operation.compose(this.undoStack.pop()!));
       } else {
-        undoStack.push(operation);
-        if (undoStack.length > this.maxItems) {
-          undoStack.shift();
+        this.undoStack.push(operation);
+        if (this.undoStack.length > this.maxItems) {
+          this.undoStack.shift();
         }
       }
       this.dontCompose = false;
@@ -60,15 +64,17 @@ export class UndoManager {
     }
   }
 
-  // Transform the undo and redo stacks against a operation by another client.
+  /** Transform the undo and redo stacks against a operation by another client. */
   transform(operation: WrappedOperation) {
     this.undoStack = transformStack(this.undoStack, operation);
     this.redoStack = transformStack(this.redoStack, operation);
   }
 
-  // Perform an undo by calling a function with the latest operation on the undo
-  // stack. The function is expected to call the `add` method with the inverse
-  // of the operation, which pushes the inverse on the redo stack.
+  /**
+   * Perform an undo by calling a function with the latest operation on the undo
+   * stack. The function is expected to call the `add` method with the inverse
+   * of the operation, which pushes the inverse on the redo stack.
+   */
   performUndo(fn: (o?: WrappedOperation) => any) {
     this.state = UNDOING_STATE;
     if (this.undoStack.length === 0) {
@@ -78,7 +84,7 @@ export class UndoManager {
     this.state = NORMAL_STATE;
   }
 
-  // The inverse of `performUndo`.
+  /** The inverse of `performUndo`. */
   performRedo(fn: (o?: WrappedOperation) => any) {
     this.state = REDOING_STATE;
     if (this.redoStack.length === 0) {
@@ -88,22 +94,22 @@ export class UndoManager {
     this.state = NORMAL_STATE;
   }
 
-  // Is the undo stack not empty?
+  /** Is the undo stack not empty? */
   canUndo() {
     return this.undoStack.length !== 0;
   }
 
-  // Is the redo stack not empty?
+  /** Is the redo stack not empty? */
   canRedo() {
     return this.redoStack.length !== 0;
   }
 
-  // Whether the UndoManager is currently performing an undo.
+  /** Whether the UndoManager is currently performing an undo. */
   isUndoing() {
     return this.state === UNDOING_STATE;
   }
 
-  // Whether the UndoManager is currently performing a redo.
+  /** Whether the UndoManager is currently performing a redo. */
   isRedoing() {
     return this.state === REDOING_STATE;
   }

@@ -1,13 +1,12 @@
 import {MonacoAdapter} from '../adapters/monaco';
 import {Cursor} from '../managers/cursor';
-import {Mark} from '../constants';
 
 export class OtherClient {
   public id: string;
   public editorAdapter: MonacoAdapter;
   public color: string;
   public cursor: Cursor | null;
-  public mark?: Mark;
+  public mark?: {clear: () => void};
 
   constructor(id: string, adapter: MonacoAdapter) {
     this.id = id;

@@ -10,8 +10,8 @@ import {assert} from '../utils';
  */
 export class TextOp {
   public type: string;
-  public chars?: number | null;
-  public text?: string | null;
+  public chars?: number;
+  public text?: string;
   public attributes?: Record<string, any> | null;
 
   constructor(type: string, textOrChars?: string | number, attributes?: Record<string, any>) {
@@ -37,8 +37,7 @@ export class TextOp {
         break;
       }
       default: {
-        this.chars = null;
-        this.text = null;
+        break;
       }
     }
   }

@@ -1,5 +1,5 @@
 import {editor, Selection, IDisposable, Range} from 'monaco-editor';
-import {MonacoCursor, Mark} from '../constants';
+import {MonacoCursor} from '../constants';
 import {TextOperation} from '../operations/text-operation';
 import {Cursor} from '../managers/cursor';
 import {WrappedOperation} from '../operations/wrapped-operation';
@@ -8,7 +8,7 @@ export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
   public monacoModel: editor.ITextModel;
   public lastDocLines: string[];
-  public lastCursorRange: Selection | null;
+  public lastCursorRange: Selection;
   public callbacks: Record<any, any> = {};
   public otherCursors: MonacoCursor[] = [];
   public addedStyleRules: string[] = [];
@@ -19,7 +19,7 @@ export class MonacoAdapter {
     this.monaco = monacoInstance;
     this.monacoModel = this.monaco.getModel()!;
     this.lastDocLines = this.monacoModel.getLinesContent();
-    this.lastCursorRange = this.monaco.getSelection();
+    this.lastCursorRange = this.monaco.getSelection()!;
     this.disposables = [
       this.monaco.onDidChangeModelContent(this.onChange),
       this.monaco.onDidBlurEditorWidget(this.onBlur),
@@ -61,27 +61,19 @@ export class MonacoAdapter {
 
   /** Get current cursor position */
   public getCursor() {
-    let selection = this.monaco.getSelection();
-
-    /** Fallback to last cursor change */
-    if (typeof selection === 'undefined' || selection === null) {
-      selection = this.lastCursorRange;
-    }
-
-    /** Obtain selection indexes */
-    let startPos = selection.getStartPosition();
-    let endPos = selection.getEndPosition();
+    const selection = this.monaco.getSelection() || this.lastCursorRange;
+    // Obtain selection indexes
+    const startPos = selection.getStartPosition();
+    const endPos = selection.getEndPosition();
     let start = this.monacoModel.getOffsetAt(startPos);
     let end = this.monacoModel.getOffsetAt(endPos);
-
-    /** If Selection is Inversed */
+    // If selection is inversed
     if (start > end) {
       let _ref = [end, start];
       start = _ref[0];
       end = _ref[1];
     }
-
-    /** Return cursor position */
+    // Return cursor position
     return new Cursor(start, end);
   }
 
@@ -90,23 +82,18 @@ export class MonacoAdapter {
     let start = this.monacoModel.getPositionAt(cursor.position);
     let end = this.monacoModel.getPositionAt(cursor.selectionEnd);
 
-    /** If selection is inversed */
+    // If selection is inversed
     if (cursor.position > cursor.selectionEnd) {
       let _ref = [end, start];
       start = _ref[0];
       end = _ref[1];
     }
-
-    /** Create Selection in the Editor */
+    // Create Selection in the Editor
     this.monaco.setSelection(new Range(start.lineNumber, start.column, end.lineNumber, end.column));
   }
 
   /** Set Remote Selection on Monaco Editor */
-  public setOtherCursor(
-    cursor: MonacoCursor,
-    color: string,
-    clientID: string | number
-  ): Mark | undefined {
+  public setOtherCursor(cursor: MonacoCursor, color: string, clientID: string | number) {
     if (
       typeof cursor !== 'object' ||
       typeof cursor.position !== 'number' ||

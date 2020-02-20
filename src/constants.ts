@@ -32,6 +32,10 @@ export type MonacoCursor = {
   decoration?: string[];
 };
 
-export type Mark = {
-  clear: () => void;
-};
+export interface EventEmitter {
+  allowedEvents_: string;
+  on: (eventType: string, callback: Function, context: any) => void;
+  off: (eventType: string, callback: Function) => void;
+  trigger: (eventType: string) => void;
+  validateEventType_: (eventType: string) => void;
+}

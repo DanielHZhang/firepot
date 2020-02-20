@@ -10,14 +10,15 @@ import {OtherClient} from './other';
 import {MonacoAdapter} from '../adapters/monaco';
 import {FirebaseAdapter} from '../adapters/firebase';
 import {SelfMeta} from './self-meta';
+import {EventEmitter} from '../constants';
 
 export class EditorClient extends Client {
   public serverAdapter: FirebaseAdapter;
   public editorAdapter: MonacoAdapter;
   public undoManager: UndoManager;
   public clients: Record<string, OtherClient>;
+  public cursor: Cursor | null;
   public focused?: boolean;
-  public cursor?: Cursor | null;
 
   constructor(serverAdapter: FirebaseAdapter, editorAdapter: MonacoAdapter) {
     super();
@@ -25,6 +26,7 @@ export class EditorClient extends Client {
     this.editorAdapter = editorAdapter;
     this.undoManager = new UndoManager();
     this.clients = {};
+    this.cursor = null;
 
     // Register monaco callbacks
     this.editorAdapter.registerCallbacks({
@@ -128,7 +130,7 @@ export class EditorClient extends Client {
   onCursorActivity() {
     const oldCursor = this.cursor;
     this.updateCursor();
-    if (!this.focused || (oldCursor && this.cursor.equals(oldCursor))) {
+    if (!this.focused || (oldCursor && this.cursor!.equals(oldCursor))) {
       return;
     }
     this.sendCursor(this.cursor);
@@ -145,7 +147,7 @@ export class EditorClient extends Client {
     this.onCursorActivity();
   }
 
-  sendCursor(cursor: Cursor) {
+  sendCursor(cursor: Cursor | null) {
     if (this.state instanceof AwaitingWithBuffer) {
       return;
     }

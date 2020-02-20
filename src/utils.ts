@@ -1,14 +1,23 @@
-export function makeEventEmitter(clazz: any, allowedEvents?: string[]) {
-  clazz.prototype.allowedEvents_ = allowedEvents;
+type Class = {new (...args: any[]): any};
 
-  clazz.prototype.on = function(eventType: string, callback: Function, context: any) {
+type HasEventListener = {
+  addEventListener: (type: string, f: Function, capture?: boolean) => void;
+  attachEvent: (type: string, f: Function) => void;
+  removeEventListener: (type: string, f: Function, capture?: boolean) => void;
+  detachEvent: (type: string, f: Function) => void;
+};
+
+export function makeEventEmitter<T extends Class>(extendable: T, allowedEvents?: string[]) {
+  extendable.prototype.allowedEvents_ = allowedEvents;
+
+  extendable.prototype.on = function(eventType: string, callback: Function, context: any) {
     this.validateEventType_(eventType);
     this.eventListeners_ = this.eventListeners_ || {};
     this.eventListeners_[eventType] = this.eventListeners_[eventType] || [];
-    this.eventListeners_[eventType].push({callback: callback, context: context});
+    this.eventListeners_[eventType].push({callback, context});
   };
 
-  clazz.prototype.off = function(eventType: string, callback: Function) {
+  extendable.prototype.off = function(eventType: string, callback: Function) {
     this.validateEventType_(eventType);
     this.eventListeners_ = this.eventListeners_ || {};
     let listeners = this.eventListeners_[eventType] || [];
@@ -20,7 +29,7 @@ export function makeEventEmitter(clazz: any, allowedEvents?: string[]) {
     }
   };
 
-  clazz.prototype.trigger = function(eventType: string) {
+  extendable.prototype.trigger = function(eventType: string) {
     this.eventListeners_ = this.eventListeners_ || {};
     let listeners = this.eventListeners_[eventType] || [];
     for (let i = 0; i < listeners.length; i++) {
@@ -28,7 +37,7 @@ export function makeEventEmitter(clazz: any, allowedEvents?: string[]) {
     }
   };
 
-  clazz.prototype.validateEventType_ = function(eventType: string) {
+  extendable.prototype.validateEventType_ = function(eventType: string) {
     if (this.allowedEvents_) {
       let allowed = false;
       for (let i = 0; i < this.allowedEvents_.length; i++) {
@@ -64,64 +73,43 @@ export function elt(tag: string, content: string | Node[] | null, attrs: Record<
   return e;
 }
 
-export function on(emitter, type: string, f, capture?: any) {
+export function on(
+  emitter: HasEventListener,
+  type: string,
+  callback: Function,
+  capture: boolean = false
+) {
   if (emitter.addEventListener) {
-    emitter.addEventListener(type, f, capture || false);
+    emitter.addEventListener(type, callback, capture);
   } else if (emitter.attachEvent) {
-    emitter.attachEvent('on' + type, f);
+    emitter.attachEvent('on' + type, callback);
   }
 }
 
-export function off(emitter, type: string, f, capture) {
+export function off(
+  emitter: HasEventListener,
+  type: string,
+  callback: Function,
+  capture: boolean = false
+) {
   if (emitter.removeEventListener) {
-    emitter.removeEventListener(type, f, capture || false);
+    emitter.removeEventListener(type, callback, capture);
   } else if (emitter.detachEvent) {
-    emitter.detachEvent('on' + type, f);
+    emitter.detachEvent('on' + type, callback);
   }
 }
 
-export function preventDefault(e: Event) {
+export function stopEvent(e: Event) {
   if (e.preventDefault) {
     e.preventDefault();
   } else {
     e.returnValue = false;
   }
-}
-
-export function stopPropagation(e: Event) {
   if (e.stopPropagation) {
     e.stopPropagation();
   } else {
     e.cancelBubble = true;
   }
-}
-
-export function stopEvent(e: Event) {
-  preventDefault(e);
-  stopPropagation(e);
-}
-
-export function stopEventAnd(fn: Function) {
-  return (e: Event) => {
-    fn(e);
-    stopEvent(e);
-    return false;
-  };
-}
-
-export function trim(str: string) {
-  return str.replace(/^\s+/g, '').replace(/\s+$/g, '');
-}
-
-export function stringEndsWith(str: string, suffix: string) {
-  const list = typeof suffix === 'string' ? [suffix] : suffix;
-  for (let i = 0; i < list.length; i++) {
-    const suf = list[i];
-    if (str.indexOf(suf, str.length - suf.length) !== -1) {
-      return true;
-    }
-  }
-  return false;
 }
 
 export function assert(condition: any, msg?: string): asserts condition {
