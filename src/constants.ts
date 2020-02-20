@@ -1,4 +1,4 @@
-import {TextOperation} from './operations/text-operation';
+import {TextOperation} from './operations/text';
 
 export enum Attributes {
   BOLD = 'b',

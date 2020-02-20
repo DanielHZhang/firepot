@@ -1,6 +1,6 @@
 import {Client} from '../client';
 import {AwaitingWithBuffer} from './awaiting-buffer';
-import {TextOperation} from '../../operations/text-operation';
+import {TextOperation} from '../../operations/text';
 
 /**
  * In the 'AwaitingConfirm' state, there's one operation the client has sent

@@ -1,4 +1,4 @@
-import {TextOperation} from '../operations/text-operation';
+import {TextOperation} from '../operations/text';
 import {Synchronized} from './states/synchronized';
 import {AwaitingWithBuffer} from './states/awaiting-buffer';
 import {AwaitingConfirm} from './states/awaiting-confirm';

@@ -1,4 +1,4 @@
-import {TextOperation} from './text-operation';
+import {TextOperation} from './text';
 
 // Copy all properties from source to target.
 function copy(source: Record<any, any>, target: Record<any, any>) {

@@ -1,8 +1,8 @@
 import {editor, Selection, IDisposable, Range} from 'monaco-editor';
 import {MonacoCursor} from '../constants';
-import {TextOperation} from '../operations/text-operation';
+import {TextOperation} from '../operations/text';
 import {Cursor} from '../managers/cursor';
-import {WrappedOperation} from '../operations/wrapped-operation';
+import {WrappedOperation} from '../operations/wrapped';
 
 export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;

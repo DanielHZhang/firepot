@@ -1,5 +1,5 @@
 import {Client} from '../client';
-import {TextOperation} from '../../operations/text-operation';
+import {TextOperation} from '../../operations/text';
 import {AwaitingConfirm} from './awaiting-confirm';
 
 export class Synchronized {

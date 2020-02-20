@@ -1,5 +1,5 @@
 import {Cursor} from '../managers/cursor';
-import {TextOperation} from '../operations/text-operation';
+import {TextOperation} from '../operations/text';
 
 export class SelfMeta {
   public cursorBefore: Cursor | null;

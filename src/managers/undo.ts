@@ -1,4 +1,4 @@
-import {WrappedOperation} from '../operations/wrapped-operation';
+import {WrappedOperation} from '../operations/wrapped';
 
 const NORMAL_STATE = 'normal';
 const UNDOING_STATE = 'undoing';

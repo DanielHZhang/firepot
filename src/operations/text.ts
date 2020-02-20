@@ -1,4 +1,4 @@
-import {TextOp} from './text-op';
+import {Operation} from './base';
 import {assert} from '../utils';
 
 function getSimpleOp(operation: TextOperation) {
@@ -32,7 +32,7 @@ function getStartIndex(operation: TextOperation) {
 export class TextOperation {
   public baseLength: number;
   public targetLength: number;
-  public ops: TextOp[];
+  public ops: Operation[];
 
   constructor() {
     // When an operation is applied to an input string, you can think of this as
@@ -49,7 +49,7 @@ export class TextOperation {
   }
 
   /** Converts a plain JS object into an operation and validates it. */
-  public static fromJSON(ops: TextOp[]) {
+  public static fromJSON(ops: Operation[]) {
     let o = new TextOperation();
     for (let i = 0, l = ops.length; i < l; i++) {
       let op = ops[i];
@@ -259,7 +259,7 @@ export class TextOperation {
       prevOp.chars += n;
     } else {
       // Create a new op.
-      this.ops.push(new TextOp('retain', n, attributes));
+      this.ops.push(new Operation('retain', n, attributes));
     }
     return this;
   }
@@ -287,11 +287,11 @@ export class TextOperation {
       if (prevPrevOp && prevPrevOp.isInsert() && prevPrevOp.attributesEqual(attributes)) {
         prevPrevOp.text += str;
       } else {
-        this.ops[this.ops.length - 1] = new TextOp('insert', str, attributes);
+        this.ops[this.ops.length - 1] = new Operation('insert', str, attributes);
         this.ops.push(prevOp);
       }
     } else {
-      this.ops.push(new TextOp('insert', str, attributes));
+      this.ops.push(new Operation('insert', str, attributes));
     }
     return this;
   }
@@ -312,7 +312,7 @@ export class TextOperation {
     if (prevOp && prevOp.isDelete()) {
       prevOp.chars += n;
     } else {
-      this.ops.push(new TextOp('delete', n));
+      this.ops.push(new Operation('delete', n));
     }
     return this;
   }

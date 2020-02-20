@@ -8,7 +8,7 @@ import {assert} from '../utils';
    Represented by strings.
  * Delete ops: Delete the next n characters. Represented by negative ints.
  */
-export class TextOp {
+export class Operation {
   public type: string;
   public chars?: number;
   public text?: string;
@@ -54,7 +54,7 @@ export class TextOp {
     return this.type === 'retain';
   }
 
-  public equals(other: TextOp) {
+  public equals(other: Operation) {
     return (
       this.type === other.type &&
       this.text === other.text &&

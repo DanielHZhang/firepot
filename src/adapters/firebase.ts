@@ -1,5 +1,5 @@
 import {database} from 'firebase';
-import {TextOperation} from '../operations/text-operation';
+import {TextOperation} from '../operations/text';
 import {assert, makeEventEmitter} from '../utils';
 import {Cursor} from '../managers/cursor';
 
