@@ -10,7 +10,6 @@ import {OtherClient} from './other';
 import {MonacoAdapter} from '../adapters/monaco';
 import {FirebaseAdapter} from '../adapters/firebase';
 import {SelfMeta} from './self-meta';
-import {EventEmitter} from '../constants';
 
 export class EditorClient extends Client {
   public serverAdapter: FirebaseAdapter;

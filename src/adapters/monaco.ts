@@ -2,14 +2,14 @@ import {editor, Selection, IDisposable, Range} from 'monaco-editor';
 import {MonacoCursor} from '../constants';
 import {TextOperation} from '../operations/text';
 import {Cursor} from '../managers/cursor';
-import {WrappedOperation} from '../operations/wrapped';
+import {assert} from '../utils';
 
 export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
   public monacoModel: editor.ITextModel;
   public lastDocLines: string[];
   public lastCursorRange: Selection;
-  public callbacks: Record<any, any> = {};
+  public callbacks: Record<string, Function> = {};
   public otherCursors: MonacoCursor[] = [];
   public addedStyleRules: string[] = [];
   public ignoreChanges: boolean = false;
@@ -79,9 +79,9 @@ export class MonacoAdapter {
 
   /** Set Selection on Monaco Editor Instance */
   public setCursor(cursor: MonacoCursor) {
+    assert(typeof cursor.position === 'number' && typeof cursor.selectionEnd === 'number');
     let start = this.monacoModel.getPositionAt(cursor.position);
     let end = this.monacoModel.getPositionAt(cursor.selectionEnd);
-
     // If selection is inversed
     if (cursor.position > cursor.selectionEnd) {
       let _ref = [end, start];
@@ -93,7 +93,7 @@ export class MonacoAdapter {
   }
 
   /** Set Remote Selection on Monaco Editor */
-  public setOtherCursor(cursor: MonacoCursor, color: string, clientID: string | number) {
+  public setOtherCursor(cursor: MonacoCursor, color: string, clientId: string | number) {
     if (
       typeof cursor !== 'object' ||
       typeof cursor.position !== 'number' ||
@@ -105,14 +105,12 @@ export class MonacoAdapter {
     ) {
       return;
     }
-
-    /** Fetch Client Cursor Information or Initialize empty array, if client does not exist */
-    let otherCursor: MonacoCursor = this.otherCursors.find((c) => c.clientID === clientID) || {
-      clientID: clientID,
+    // Fetch Client Cursor Information or Initialize empty array, if client does not exist
+    const otherCursor: MonacoCursor = this.otherCursors.find((c) => c.clientID === clientId) || {
+      clientID: clientId,
       decoration: [],
     };
-
-    /** Remove Earlier Decorations, if any, or initialize empty decor */
+    // Remove Earlier Decorations, if any, or initialize empty decor
     otherCursor.decoration = this.monaco.deltaDecorations(otherCursor.decoration!, []);
     let className = 'other-client-selection-' + color.replace('#', '');
     if (cursor.position === cursor.selectionEnd) {
@@ -121,27 +119,23 @@ export class MonacoAdapter {
     } else {
       this.addStyleRule(className, this.getCSS(className, color, color));
     }
-
-    /** Get co-ordinate position in Editor */
+    // Get co-ordinate position in Editor
     let start = this.monacoModel.getPositionAt(cursor.position);
     let end = this.monacoModel.getPositionAt(cursor.selectionEnd);
-
-    /** Selection is inversed */
+    // Selection is inversed
     if (cursor.position > cursor.selectionEnd) {
       let _ref = [end, start];
       start = _ref[0];
       end = _ref[1];
     }
-
-    /** Add decoration to the Editor */
+    // Add decoration to the Editor
     otherCursor.decoration = this.monaco.deltaDecorations(otherCursor.decoration, [
       {
         range: new Range(start.lineNumber, start.column, end.lineNumber, end.column),
         options: {className},
       },
     ]);
-
-    /** Clear cursor method */
+    // Clear cursor method
     return {
       clear: () => {
         otherCursor.decoration = this.monaco.deltaDecorations(otherCursor.decoration!, []);
@@ -181,84 +175,65 @@ export class MonacoAdapter {
     content: string,
     offset: number
   ) {
-    /** Change Informations */
-    let text = change.text;
-    let rangeLength = change.rangeLength;
-    let rangeOffset = change.rangeOffset + offset;
-
-    /** Additional SEEK distance */
-    let restLength = content.length + offset - rangeOffset;
-
-    /** Declare OT.js Operation letiables */
+    const rangeLength = change.rangeLength;
+    const rangeOffset = change.rangeOffset + offset;
+    const restLength = content.length + offset - rangeOffset; // Additional seek distance
     let change_op, inverse_op, replaced_text;
-
-    if (text.length === 0 && rangeLength > 0) {
-      /** Delete Operation */
+    if (change.text.length === 0 && rangeLength > 0) {
+      // Delete Operation
       replaced_text = content.slice(rangeOffset, rangeOffset + rangeLength);
-
       change_op = new TextOperation()
         .retain(rangeOffset)
         .delete(rangeLength)
         .retain(restLength - rangeLength);
-
       inverse_op = new TextOperation()
         .retain(rangeOffset)
         .insert(replaced_text)
         .retain(restLength - rangeLength);
-    } else if (text.length > 0 && rangeLength > 0) {
-      /** Replace Operation */
+    } else if (change.text.length > 0 && rangeLength > 0) {
+      // Replace Operation
       replaced_text = content.slice(rangeOffset, rangeOffset + rangeLength);
-
       change_op = new TextOperation()
         .retain(rangeOffset)
         .delete(rangeLength)
-        .insert(text)
+        .insert(change.text)
         .retain(restLength - rangeLength);
-
       inverse_op = new TextOperation()
         .retain(rangeOffset)
-        .delete(text.length)
+        .delete(change.text.length)
         .insert(replaced_text)
         .retain(restLength - rangeLength);
     } else {
-      /** Insert Operation */
+      // Insert Operation
       change_op = new TextOperation()
         .retain(rangeOffset)
-        .insert(text)
+        .insert(change.text)
         .retain(restLength);
-
       inverse_op = new TextOperation()
         .retain(rangeOffset)
-        .delete(text)
+        .delete(change.text)
         .retain(restLength);
     }
-
     return [change_op, inverse_op];
   }
 
-  /**
-   * @method onChange - OnChange Event Handler
-   * @param {Object} event - OnChange Event Delegate
-   */
   public onChange = (event: editor.IModelContentChangedEvent) => {
     if (!this.ignoreChanges) {
-      let content = this.lastDocLines.join(this.monacoModel.getEOL());
+      const content = this.lastDocLines.join(this.monacoModel.getEOL());
       let offset = 0;
-
-      /** If no change information recieved */
+      // If no change information recieved
       if (!event.changes) {
         const op = new TextOperation().retain(content.length);
         this.trigger('change', op, op);
       }
-
-      /** Reverse iterate all changes */
+      // Reverse iterate all changes
       event.changes.reverse().forEach((change) => {
         const pair = this.operationFromMonacoChanges(change, content, offset);
         offset += pair[0].targetLength - pair[0].baseLength;
-        this.trigger.apply(this, ['change'].concat(pair));
+        this.trigger('change', ...pair);
+        // this.trigger.apply(this, ['change'].concat(pair));
       });
-
-      /** Update Editor Content */
+      // Update Editor Content
       this.lastDocLines = this.monacoModel.getLinesContent();
     }
   };
@@ -268,11 +243,12 @@ export class MonacoAdapter {
     if (!this.callbacks.hasOwnProperty(event)) {
       return;
     }
-    let action = this.callbacks[event];
-    if (!typeof action === 'function') {
-      return;
-    }
-    action.apply(null, args);
+    this.callbacks[event](...args);
+    // let action = this.callbacks[event];
+    // if (typeof action !== 'function') {
+    //   return;
+    // }
+    // action.apply(null, args);
   }
 
   /** Blur event handler */
@@ -292,41 +268,35 @@ export class MonacoAdapter {
     setTimeout(() => this.trigger('cursorActivity'), 1);
   };
 
-  /**
-   * @method applyOperation
-   * @param {Operation} operation - OT.js Operation Object
-   */
   public applyOperation(operation: TextOperation) {
     if (!operation.isNoop()) {
       this.ignoreChanges = true;
     }
-
-    /** Get Operations List */
+    // Get Operations List
     let opsList = operation.ops;
     let index = 0;
 
     opsList.forEach((op) => {
-      /** Retain Operation */
       if (op.isRetain()) {
-        index += op.chars;
+        // Retain Operation
+        index += op.chars!;
       } else if (op.isInsert()) {
-        /** Insert Operation */
-        let pos = this.monacoModel.getPositionAt(index);
-
+        // Insert Operation
+        const pos = this.monacoModel.getPositionAt(index);
         this.monaco.executeEdits('my-source', [
           {
             range: new Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
-            text: op.text,
+            text: op.text ?? null,
             forceMoveMarkers: true,
           },
         ]);
-
+        assert(typeof op.text === 'string');
         index += op.text.length;
       } else if (op.isDelete()) {
-        /** Delete Operation */
-        let from = this.monacoModel.getPositionAt(index);
-        let to = this.monacoModel.getPositionAt(index + op.chars);
-
+        // Delete Operation
+        assert(typeof op.chars === 'number');
+        const from = this.monacoModel.getPositionAt(index);
+        const to = this.monacoModel.getPositionAt(index + op.chars);
         this.monaco.executeEdits('my-source', [
           {
             range: new Range(from.lineNumber, from.column, to.lineNumber, to.column),
@@ -336,8 +306,7 @@ export class MonacoAdapter {
         ]);
       }
     });
-
-    /** Update Editor Content and Reset Config */
+    // Update editor content and reset config
     this.lastDocLines = this.monacoModel.getLinesContent();
     this.ignoreChanges = false;
   }

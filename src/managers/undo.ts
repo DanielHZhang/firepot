@@ -1,12 +1,13 @@
 import {WrappedOperation} from '../operations/wrapped';
+import {TextOperation} from '../operations/text';
 
 const NORMAL_STATE = 'normal';
 const UNDOING_STATE = 'undoing';
 const REDOING_STATE = 'redoing';
 
-function transformStack(stack: WrappedOperation[], operation: WrappedOperation) {
-  let newStack = [];
-  let Operation = operation.constructor;
+function transformStack(stack: WrappedOperation[], operation: WrappedOperation | TextOperation) {
+  const newStack = [];
+  const Operation = operation.constructor as any;
   for (let i = stack.length - 1; i >= 0; i--) {
     let pair = Operation.transform(stack[i], operation);
     if (typeof pair[0].isNoop !== 'function' || !pair[0].isNoop()) {
