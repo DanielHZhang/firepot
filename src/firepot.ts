@@ -60,6 +60,7 @@ export class Firepot {
   public options_: Record<string, any>;
   public editorAdapter_: MonacoAdapter;
   public ready_: boolean;
+  public editorWrapper: HTMLElement;
 
   constructor(ref: database.Reference, place: editor.IStandaloneCodeEditor, options?: any) {
     this.zombie_ = false;
@@ -74,6 +75,7 @@ export class Firepot {
     }
 
     const editorWrapper = this.monaco_.getDomNode()!;
+    this.editorWrapper = editorWrapper;
     this.firepadWrapper_ = elt('div', null, {class: 'firepad'});
     editorWrapper?.parentNode?.replaceChild(this.firepadWrapper_, editorWrapper);
     this.firepadWrapper_.appendChild(editorWrapper);
@@ -113,7 +115,7 @@ export class Firepot {
 
   dispose() {
     this.zombie_ = true; // We've been disposed.  No longer valid to do anything.
-    editorWrapper = this.monaco_.getDomNode();
+    this.editorWrapper = this.monaco_.getDomNode()!;
 
     this.firepadWrapper_.removeChild(editorWrapper);
     this.firepadWrapper_.parentNode.replaceChild(editorWrapper, this.firepadWrapper_);

@@ -93,8 +93,6 @@ export class FirebaseAdapter {
     setTimeout(() => {
       this.monitorHistory_();
     }, 0);
-
-    makeEventEmitter(FirebaseAdapter, ['ready', 'cursor', 'operation', 'ack', 'retry']);
   }
 
   dispose() {
@@ -152,7 +150,7 @@ export class FirebaseAdapter {
   sendOperation(operation: TextOperation, callback) {
     // If we're not ready yet, do nothing right now, and trigger a retry when we're ready.
     if (!this.ready_) {
-      this.on('ready', function() {
+      this.on('ready', () => {
         this.trigger('retry');
       });
       return;
@@ -427,3 +425,5 @@ export class FirebaseAdapter {
     this.firebaseCallbacks_ = [];
   }
 }
+
+makeEventEmitter(FirebaseAdapter, ['ready', 'cursor', 'operation', 'ack', 'retry']);
