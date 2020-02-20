@@ -1,7 +1,8 @@
 import {editor, Selection, IDisposable, Range} from 'monaco-editor';
-import {MonacoCursor} from '../constants';
+import {MonacoCursor, Mark} from '../constants';
 import {TextOperation} from '../operations/text-operation';
 import {Cursor} from '../managers/cursor';
+import {WrappedOperation} from '../operations/wrapped-operation';
 
 export class MonacoAdapter {
   public monaco: editor.IStandaloneCodeEditor;
@@ -101,20 +102,23 @@ export class MonacoAdapter {
   }
 
   /** Set Remote Selection on Monaco Editor */
-  public setOtherCursor(cursor: MonacoCursor, color: string, clientID: string | number) {
+  public setOtherCursor(
+    cursor: MonacoCursor,
+    color: string,
+    clientID: string | number
+  ): Mark | undefined {
     if (
       typeof cursor !== 'object' ||
       typeof cursor.position !== 'number' ||
-      typeof cursor.selectionEnd !== 'number'
+      typeof cursor.selectionEnd !== 'number' ||
+      typeof color !== 'string' ||
+      !color.match(/^#[a-fA-F0-9]{3,6}$/) ||
+      cursor.position < 0 ||
+      cursor.selectionEnd < 0
     ) {
-      return false;
+      return;
     }
-    if (typeof color !== 'string' || !color.match(/^#[a-fA-F0-9]{3,6}$/)) {
-      return false;
-    }
-    if (cursor.position < 0 || cursor.selectionEnd < 0) {
-      return false;
-    }
+
     /** Fetch Client Cursor Information or Initialize empty array, if client does not exist */
     let otherCursor: MonacoCursor = this.otherCursors.find((c) => c.clientID === clientID) || {
       clientID: clientID,
@@ -159,7 +163,7 @@ export class MonacoAdapter {
   }
 
   /** Assign callback functions to internal property */
-  public registerCallbacks(callbacks: Function[]) {
+  public registerCallbacks(callbacks: Record<string, Function>) {
     this.callbacks = Object.assign({}, this.callbacks, callbacks);
   }
 

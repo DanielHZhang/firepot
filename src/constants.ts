@@ -1,3 +1,5 @@
+import {TextOperation} from './operations/text-operation';
+
 export enum Attributes {
   BOLD = 'b',
   ITALIC = 'i',
@@ -28,4 +30,8 @@ export type MonacoCursor = {
   selectionEnd?: number;
   clientID?: string | number;
   decoration?: string[];
+};
+
+export type Mark = {
+  clear: () => void;
 };

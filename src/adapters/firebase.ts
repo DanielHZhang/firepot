@@ -1,6 +1,7 @@
 import {database} from 'firebase';
 import {TextOperation} from '../operations/text-operation';
 import {assert, makeEventEmitter} from '../utils';
+import {Cursor} from '../managers/cursor';
 
 // Save a checkpoint every 100 edits.
 const CHECKPOINT_FREQUENCY = 100;
@@ -147,7 +148,7 @@ export class FirebaseAdapter {
    * An exception will be thrown on transaction failure, which should only happen on
    * catastrophic failure like a security rule violation.
    */
-  sendOperation(operation: TextOperation, callback) {
+  sendOperation(operation: TextOperation, callback?: any) {
     // If we're not ready yet, do nothing right now, and trigger a retry when we're ready.
     if (!this.ready_) {
       this.on('ready', () => {
@@ -209,7 +210,7 @@ export class FirebaseAdapter {
     });
   }
 
-  sendCursor(obj) {
+  sendCursor(obj: Cursor | null) {
     this.userRef_.child('cursor').set(obj);
     this.cursor_ = obj;
   }
@@ -223,7 +224,7 @@ export class FirebaseAdapter {
     return this.document_;
   }
 
-  registerCallbacks(callbacks: any[]) {
+  registerCallbacks(callbacks: Record<string, Function>) {
     for (let eventType in callbacks) {
       this.on(eventType, callbacks[eventType]);
     }

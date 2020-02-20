@@ -69,7 +69,7 @@ export class UndoManager {
   // Perform an undo by calling a function with the latest operation on the undo
   // stack. The function is expected to call the `add` method with the inverse
   // of the operation, which pushes the inverse on the redo stack.
-  performUndo(fn: Function) {
+  performUndo(fn: (o?: WrappedOperation) => any) {
     this.state = UNDOING_STATE;
     if (this.undoStack.length === 0) {
       throw new Error('undo not possible');
@@ -79,7 +79,7 @@ export class UndoManager {
   }
 
   // The inverse of `performUndo`.
-  performRedo(fn: Function) {
+  performRedo(fn: (o?: WrappedOperation) => any) {
     this.state = REDOING_STATE;
     if (this.redoStack.length === 0) {
       throw new Error('redo not possible');

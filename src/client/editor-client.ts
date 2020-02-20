@@ -6,76 +6,27 @@ import {TextOperation} from '../operations/text-operation';
 import {makeEventEmitter} from '../utils';
 import {Synchronized} from './states/synchronized';
 import {AwaitingWithBuffer} from './states/awaiting-buffer';
-
-class SelfMeta {
-  public cursorBefore: Cursor;
-  public cursorAfter: Cursor;
-
-  constructor(cursorBefore: Cursor, cursorAfter: Cursor) {
-    this.cursorBefore = cursorBefore;
-    this.cursorAfter = cursorAfter;
-  }
-
-  invert() {
-    return new SelfMeta(this.cursorAfter, this.cursorBefore);
-  }
-
-  compose(other: SelfMeta) {
-    return new SelfMeta(this.cursorBefore, other.cursorAfter);
-  }
-
-  transform(operation: TextOperation) {
-    return new SelfMeta(
-      this.cursorBefore ? this.cursorBefore.transform(operation) : null,
-      this.cursorAfter ? this.cursorAfter.transform(operation) : null
-    );
-  }
-}
-
-class OtherClient {
-  public id: string;
-  public editorAdapter: any;
-  public color: string;
-  public cursor: Cursor | null;
-  public mark: any;
-
-  constructor(id: string, editorAdapter: any) {
-    this.id = id;
-    this.editorAdapter = editorAdapter;
-  }
-
-  setColor(color: string) {
-    this.color = color;
-  }
-
-  updateCursor(cursor: Cursor) {
-    this.removeCursor();
-    this.cursor = cursor;
-    this.mark = this.editorAdapter.setOtherCursor(cursor, this.color, this.id);
-  }
-
-  removeCursor() {
-    if (this.mark) {
-      this.mark.clear();
-    }
-  }
-}
+import {OtherClient} from './other';
+import {MonacoAdapter} from '../adapters/monaco';
+import {FirebaseAdapter} from '../adapters/firebase';
+import {SelfMeta} from './self-meta';
 
 export class EditorClient extends Client {
-  public serverAdapter: any;
-  public editorAdapter: any;
+  public serverAdapter: FirebaseAdapter;
+  public editorAdapter: MonacoAdapter;
   public undoManager: UndoManager;
   public clients: Record<string, OtherClient>;
-  public focused: boolean;
-  public cursor: Cursor;
+  public focused?: boolean;
+  public cursor?: Cursor | null;
 
-  constructor(serverAdapter: any, editorAdapter: any) {
+  constructor(serverAdapter: FirebaseAdapter, editorAdapter: MonacoAdapter) {
     super();
     this.serverAdapter = serverAdapter;
     this.editorAdapter = editorAdapter;
     this.undoManager = new UndoManager();
     this.clients = {};
 
+    // Register monaco callbacks
     this.editorAdapter.registerCallbacks({
       change: (operation: TextOperation, inverse: TextOperation) => {
         this.onChange(operation, inverse);
@@ -90,13 +41,10 @@ export class EditorClient extends Client {
         this.onFocus();
       },
     });
-    this.editorAdapter.registerUndo(() => {
-      this.undo();
-    });
-    this.editorAdapter.registerRedo(() => {
-      this.redo();
-    });
+    this.editorAdapter.registerUndo(() => this.undo());
+    this.editorAdapter.registerRedo(() => this.redo());
 
+    // Register firebase callbacks
     this.serverAdapter.registerCallbacks({
       ack: () => {
         this.serverAck();
@@ -137,7 +85,7 @@ export class EditorClient extends Client {
     return (this.clients[clientId] = new OtherClient(clientId, this.editorAdapter));
   }
 
-  applyUnredo(operation: TextOperation) {
+  applyUnredo(operation?: WrappedOperation) {
     this.undoManager.add(this.editorAdapter.invertOperation(operation));
     this.editorAdapter.applyOperation(operation.wrapped);
     this.cursor = operation.meta.cursorAfter;
@@ -149,30 +97,26 @@ export class EditorClient extends Client {
 
   undo() {
     if (this.undoManager.canUndo()) {
-      this.undoManager.performUndo((o) => {
-        this.applyUnredo(o);
-      });
+      this.undoManager.performUndo((o) => this.applyUnredo(o));
     }
   }
 
   redo() {
     if (this.undoManager.canRedo()) {
-      this.undoManager.performRedo((o) => {
-        this.applyUnredo(o);
-      });
+      this.undoManager.performRedo((o) => this.applyUnredo(o));
     }
   }
 
   onChange(textOperation: TextOperation, inverse: TextOperation) {
-    let cursorBefore = this.cursor;
+    const cursorBefore = this.cursor;
     this.updateCursor();
 
-    let compose =
+    const compose =
       this.undoManager.undoStack.length > 0 &&
       inverse.shouldBeComposedWithInverted(
         this.undoManager.undoStack[this.undoManager.undoStack.length - 1].wrapped
       );
-    let inverseMeta = new SelfMeta(this.cursor, cursorBefore);
+    const inverseMeta = new SelfMeta(this.cursor, cursorBefore);
     this.undoManager.add(new WrappedOperation(inverse, inverseMeta), compose);
     this.applyClient(textOperation);
   }
@@ -182,7 +126,7 @@ export class EditorClient extends Client {
   }
 
   onCursorActivity() {
-    let oldCursor = this.cursor;
+    const oldCursor = this.cursor;
     this.updateCursor();
     if (!this.focused || (oldCursor && this.cursor.equals(oldCursor))) {
       return;

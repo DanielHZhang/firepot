@@ -16,15 +16,14 @@ export class AwaitingWithBuffer {
     this.buffer = buffer;
   }
 
-  applyClient(client: Client, operation: TextOperation) {
+  applyClient(operation: TextOperation) {
     // Compose the user's changes onto the buffer
     const newBuffer = this.buffer.compose(operation);
     return new AwaitingWithBuffer(this.outstanding, newBuffer);
   }
 
-  applyServer(client: Client, operation: TextOperation) {
+  applyServer(operation: TextOperation, client: Client) {
     // Operation comes from another client
-    //
     //                       /\
     //     this.outstanding /  \ operation
     //                     /    \
@@ -33,30 +32,25 @@ export class AwaitingWithBuffer {
     //                  /    \/
     //                  \    /
     //          pair2[1] \  / pair2[0] (new buffer)
-    // the transformed    \/
-    // operation -- can
-    // be applied to the
-    // client's current
-    // document
-    //
-    // * pair1[1]
-    let pair1 = this.outstanding.transform(operation);
-    let pair2 = this.buffer.transform(pair1[1]);
+    //                    \/
+    // The transformed operation -- can be applied to the client's current
+    // document * pair1[1]
+    const pair1 = this.outstanding.transform(operation);
+    const pair2 = this.buffer.transform(pair1[1]);
     client.applyOperation(pair2[1]);
     return new AwaitingWithBuffer(pair1[0], pair2[0]);
   }
 
-  serverRetry(client: Client) {
-    // Merge with our buffer and resend.
-    let outstanding = this.outstanding.compose(this.buffer);
-    client.sendOperation(outstanding);
-    return new AwaitingConfirm(outstanding);
-  }
-
   serverAck(client: Client) {
-    // The pending operation has been acknowledged
-    // => send buffer
+    // The pending operation has been acknowledged => send buffer
     client.sendOperation(this.buffer);
     return new AwaitingConfirm(this.buffer);
+  }
+
+  serverRetry(client: Client) {
+    // Merge with our buffer and resend
+    const outstanding = this.outstanding.compose(this.buffer);
+    client.sendOperation(outstanding);
+    return new AwaitingConfirm(outstanding);
   }
 }
