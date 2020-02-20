@@ -1,10 +1,18 @@
 {
   "name": "firepot",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "1.0.1",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "build": "tsc-silent -p tsconfig.json --suppress @",
+    "prepare": "yarn build"
+  },
+  "files": [
+    "lib/**/*"
+  ],
   "dependencies": {
+    "firebase": "^7.8.2",
     "monaco-editor": "^0.20.0"
   },
   "devDependencies": {
@@ -13,7 +21,9 @@
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.10.0",
     "prettier": "^1.19.1",
-    "typescript": "^3.7.5"
+    "tsc-silent": "^1.2.1",
+    "typescript": "^3.7.5",
+    "yargs": "^15.1.0"
   },
   "peerDependencies": {
     "firebase": "^7.8.2",
