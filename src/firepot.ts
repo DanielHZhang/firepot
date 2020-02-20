@@ -1,9 +1,10 @@
 import {database} from 'firebase';
 import {editor} from 'monaco-editor';
 import {MonacoAdapter} from './adapters/monaco';
-import {elt, on, stopEvent, makeEventEmitter} from './utils';
+import {elt, stopEvent, makeEventEmitter} from './utils';
 import {FirebaseAdapter} from './adapters/firebase';
 import {EditorClient} from './client/editor-client';
+import {EventEmitter, FirepotOptions} from './constants';
 
 function rgb2hex(r: number, g: number, b: number) {
   const digits = (n: number) => {
@@ -49,6 +50,7 @@ function colorFromUserId(userId: string) {
   return hsl2hex(hue, 1, 0.75);
 }
 
+export interface Firepot extends EventEmitter {}
 export class Firepot {
   public zombie_: boolean;
   public monaco_: editor.IStandaloneCodeEditor;
@@ -56,7 +58,7 @@ export class Firepot {
   public firepadWrapper_: HTMLElement;
   public firebaseAdapter_: FirebaseAdapter;
   public client_: EditorClient;
-  public options_: Record<string, any>;
+  public options_: FirepotOptions;
   public editorAdapter_: MonacoAdapter;
   public editorWrapper: HTMLElement;
   public ready_?: boolean;
@@ -64,7 +66,7 @@ export class Firepot {
   constructor(
     ref: database.Reference,
     place: editor.IStandaloneCodeEditor,
-    options: Record<string, any> = {}
+    options: FirepotOptions = {}
   ) {
     this.zombie_ = false;
     this.monaco_ = place;
@@ -95,23 +97,18 @@ export class Firepot {
     this.client_ = new EditorClient(this.firebaseAdapter_, this.editorAdapter_);
 
     this.firebaseAdapter_.on('cursor', () => {
-      this.trigger.apply(this, ['cursor'].concat([].slice.call(arguments)));
+      this.trigger('cursor', ref, place, options);
+      // this.trigger.apply(this, ['cursor'].concat([].slice.call(arguments)));
     });
     this.firebaseAdapter_.on('ready', () => {
       this.ready_ = true;
-      // if (this.monaco_) {
-      //   this.editorAdapter_.grabDocumentState();
-      // }
-      let defaultText = this.getOption('defaultText', null);
+      const defaultText = this.getOption('defaultText', null);
       if (defaultText && this.isHistoryEmpty()) {
         this.setText(defaultText);
       }
       this.trigger('ready');
     });
-
-    this.client_.on('synced', (isSynced) => {
-      this.trigger('synced', isSynced);
-    });
+    this.client_.on('synced', (isSynced: boolean) => this.trigger('synced', isSynced));
   }
 
   dispose() {
@@ -123,7 +120,7 @@ export class Firepot {
     this.editorAdapter_.detach();
   }
 
-  setUserId(userId: string | number) {
+  setUserId(userId: string) {
     this.firebaseAdapter_.setUserId(userId);
   }
 

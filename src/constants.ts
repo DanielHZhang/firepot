@@ -1,5 +1,3 @@
-import {TextOperation} from './operations/text';
-
 export enum Attributes {
   BOLD = 'b',
   ITALIC = 'i',
@@ -34,8 +32,15 @@ export type MonacoCursor = {
 
 export interface EventEmitter {
   allowedEvents_: string[];
-  on: (eventType: string, callback: Function, context: any) => void;
+  on: (eventType: string, callback: Function, context?: any) => void;
   off: (eventType: string, callback: Function) => void;
   trigger: (eventType: string, ...args: any[]) => void;
   validateEventType_: (eventType: string) => void;
 }
+
+export type FirepotOptions = {
+  [key: string]: any;
+  userId?: string;
+  userColor?: string;
+  defaultText?: string;
+};

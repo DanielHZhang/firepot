@@ -2,6 +2,7 @@ import {database} from 'firebase';
 import {TextOperation} from '../operations/text';
 import {assert, makeEventEmitter} from '../utils';
 import {Cursor} from '../managers/cursor';
+import {EventEmitter} from '../constants';
 
 // Save a checkpoint every 100 edits.
 const CHECKPOINT_FREQUENCY = 100;
@@ -33,32 +34,32 @@ function revisionFromId(revisionId: string) {
   return revision;
 }
 
+export interface FirebaseAdapter extends EventEmitter {}
 export class FirebaseAdapter {
-  public ref_: database.Reference;
-  public document_: TextOperation;
   public ready_: boolean;
   public zombie_: boolean;
-  public firebaseCallbacks_: any[];
+  public ref_?: database.Reference;
+  public document_?: TextOperation;
   public revision_: number;
+  public firebaseCallbacks_: any[];
   public pendingReceivedRevisions_: Record<string, {o: TextOperation; a: string}>;
-  public userId_: string | number;
-  public sent_: {id: string; op: TextOperation} | null;
+  public userId_?: string | null;
+  public sent_?: {id: string; op: TextOperation} | null;
   public checkpointRevision_: number;
-  public userRef_: any;
+  public userRef_?: database.Reference;
   public cursor_: any;
   public color_: any;
 
-  constructor(ref: database.Reference, userId: string | number, userColor: string) {
+  constructor(ref: database.Reference, userId: string, userColor: string) {
     this.ref_ = ref;
     this.ready_ = false;
     this.firebaseCallbacks_ = [];
     this.zombie_ = false;
 
-    // We store the current document state as a TextOperation so we can write checkpoints to Firebase occasionally.
+    // Current document state stored as a TextOperation to write  checkpoints to Firebase
     this.document_ = new TextOperation();
-
-    // The next expected revision.
-    this.revision_ = 0;
+    this.revision_ = 0; // The next expected revision
+    this.checkpointRevision_ = 0;
 
     // This is used for two purposes:
     // 1) On initialization, we fill this with the latest checkpoint and any subsequent operations and then process them all together.
@@ -68,24 +69,14 @@ export class FirebaseAdapter {
     if (userId) {
       this.setUserId(userId);
       this.setColor(userColor);
-
-      let connectedRef = ref.root.child('.info/connected');
-
       this.firebaseOn_(
-        connectedRef,
+        ref.root.child('.info/connected'),
         'value',
-        (snapshot) => {
-          if (snapshot.val() === true) {
-            this.initializeUserData_();
-          }
-        },
+        (snapshot) => snapshot.val() === true && this.initializeUserData_(),
         this
       );
-
-      // Once we're initialized, start tracking users' cursors.
-      this.on('ready', () => {
-        this.monitorCursors_();
-      });
+      // Once initialized, start tracking users' cursors
+      this.on('ready', () => this.monitorCursors_());
     } else {
       this.userId_ = ref.push().key;
     }
@@ -99,25 +90,20 @@ export class FirebaseAdapter {
   dispose() {
     if (!this.ready_) {
       // TODO: this completes loading the text even though we're no longer interested in it.
-      this.on('ready', () => {
-        this.dispose();
-      });
+      this.on('ready', () => this.dispose());
       return;
     }
-
     this.removeFirebaseCallbacks_();
-
     if (this.userRef_) {
       this.userRef_.child('cursor').remove();
       this.userRef_.child('color').remove();
     }
-
-    this.ref_ = null;
-    this.document_ = null;
+    this.ref_ = undefined;
+    this.document_ = undefined;
     this.zombie_ = true;
   }
 
-  setUserId(userId: string | number) {
+  setUserId(userId: string) {
     if (this.userRef_) {
       // Clean up existing data.  Avoid nuking another user's data
       // (if a future user takes our old name).
@@ -133,7 +119,7 @@ export class FirebaseAdapter {
         .cancel();
     }
     this.userId_ = userId;
-    this.userRef_ = this.ref_.child('users').child(userId);
+    this.userRef_ = this.ref_?.child('users').child(userId);
     this.initializeUserData_();
   }
 
@@ -159,32 +145,29 @@ export class FirebaseAdapter {
 
     // Sanity check that this operation is valid.
     assert(
-      this.document_.targetLength === operation.baseLength,
+      this.document_?.targetLength === operation.baseLength,
       'sendOperation() called with invalid operation.'
     );
 
     // Convert revision into an id that will sort properly lexicographically.
-    let revisionId = revisionToId(this.revision_);
-
-    const doTransaction = (revisionId: string, revisionData: any) => {
+    const revisionId = revisionToId(this.revision_);
+    const doTransaction = (revisionId: string, revisionData: any) =>
       this.ref_
-        .child('history')
+        ?.child('history')
         .child(revisionId)
         .transaction(
-          (current: any) => {
+          (current) => {
             // if (current === null) {
             if (current === null || current === undefined) {
               return revisionData;
             }
           },
-          (error: any, committed: any) => {
+          (error, committed) => {
             if (error) {
               if (error.message === 'disconnect') {
                 if (this.sent_ && this.sent_.id === revisionId) {
-                  // We haven't seen our transaction succeed or fail.  Send it again.
-                  setTimeout(() => {
-                    doTransaction(revisionId, revisionData);
-                  }, 0);
+                  // We haven't seen our transaction succeed or fail. Send it again.
+                  setTimeout(() => doTransaction(revisionId, revisionData), 0);
                 } else if (callback) {
                   callback(error, false);
                 }
@@ -200,7 +183,6 @@ export class FirebaseAdapter {
           },
           false
         );
-    };
 
     this.sent_ = {id: revisionId, op: operation};
     doTransaction(revisionId, {
@@ -211,18 +193,18 @@ export class FirebaseAdapter {
   }
 
   sendCursor(obj: Cursor | null) {
-    this.userRef_.child('cursor').set(obj);
+    this.userRef_?.child('cursor').set(obj);
     this.cursor_ = obj;
   }
 
-  setColor(color) {
-    this.userRef_.child('color').set(color);
+  setColor(color: string) {
+    this.userRef_?.child('color').set(color);
     this.color_ = color;
   }
 
-  getDocument() {
-    return this.document_;
-  }
+  // getDocument() {
+  //   return this.document_;
+  // }
 
   registerCallbacks(callbacks: Record<string, Function>) {
     for (let eventType in callbacks) {
@@ -232,11 +214,11 @@ export class FirebaseAdapter {
 
   initializeUserData_() {
     this.userRef_
-      .child('cursor')
+      ?.child('cursor')
       .onDisconnect()
       .remove();
     this.userRef_
-      .child('color')
+      ?.child('color')
       .onDisconnect()
       .remove();
     this.sendCursor(this.cursor_ || null);
@@ -244,6 +226,7 @@ export class FirebaseAdapter {
   }
 
   monitorCursors_() {
+    assert(this.ref_ !== undefined);
     const usersRef = this.ref_.child('users');
     const childChanged = (childSnap: any) => {
       let userId = childSnap.key;
@@ -252,21 +235,21 @@ export class FirebaseAdapter {
     };
     this.firebaseOn_(usersRef, 'child_added', childChanged);
     this.firebaseOn_(usersRef, 'child_changed', childChanged);
-    this.firebaseOn_(usersRef, 'child_removed', (childSnap: any) => {
-      let userId = childSnap.key;
-      this.trigger('cursor', userId, null);
+    this.firebaseOn_(usersRef, 'child_removed', (childSnapshot) => {
+      this.trigger('cursor', childSnapshot.key, null);
     });
   }
 
   monitorHistory_() {
     // Get the latest checkpoint as a starting point so we don't have to re-play entire history.
-    this.ref_.child('checkpoint').once('value', (s) => {
+    this.ref_?.child('checkpoint').once('value', (s) => {
       if (this.zombie_) {
         return;
-      } // just in case we were cleaned up before we got the checkpoint data.
-      let revisionId = s.child('id').val(),
-        op = s.child('o').val(),
-        author = s.child('a').val();
+      }
+      // just in case we were cleaned up before we got the checkpoint data.
+      const revisionId = s.child('id').val();
+      const op = s.child('o').val();
+      const author = s.child('a').val();
       // if (op !== null && revisionId !== null && author !== null) {
       if (op && revisionId && author) {
         this.pendingReceivedRevisions_[revisionId] = {o: op, a: author};
@@ -280,25 +263,23 @@ export class FirebaseAdapter {
   }
 
   monitorHistoryStartingAt_(revision: number) {
+    assert(this.ref_ !== undefined);
     const historyRef = this.ref_.child('history').startAt(null, revisionToId(revision));
     setTimeout(() => {
       this.firebaseOn_(historyRef, 'child_added', (revisionSnapshot) => {
-        let revisionId = revisionSnapshot.key;
+        const revisionId = revisionSnapshot.key!;
         this.pendingReceivedRevisions_[revisionId] = revisionSnapshot.val();
         if (this.ready_) {
           this.handlePendingReceivedRevisions_();
         }
       });
-      historyRef.once('value', () => {
-        this.handleInitialRevisions_();
-      });
+      historyRef.once('value', () => this.handleInitialRevisions_());
     }, 0);
   }
 
   handleInitialRevisions_() {
     assert(!this.ready_, 'Should not be called multiple times.');
-
-    // console.log('handle initial revisions');
+    assert(this.ref_ !== undefined && this.document_ !== undefined);
 
     // Compose the checkpoint and all subsequent revisions into a single operation to apply at once.
     this.revision_ = this.checkpointRevision_;
@@ -314,25 +295,20 @@ export class FirebaseAdapter {
       } else {
         this.document_ = this.document_.compose(revision.operation);
       }
-
       delete pending[revisionId];
       this.revision_++;
       revisionId = revisionToId(this.revision_);
     }
-
     this.trigger('operation', this.document_);
     this.ready_ = true;
-    setTimeout(() => {
-      this.trigger('ready');
-    }, 0);
+    setTimeout(() => this.trigger('ready'), 0);
   }
 
-  handlePendingReceivedRevisions_() {
-    let pending = this.pendingReceivedRevisions_;
+  public handlePendingReceivedRevisions_() {
+    assert(this.ref_ !== undefined && this.document_ !== undefined);
+    const pending = this.pendingReceivedRevisions_;
     let revisionId = revisionToId(this.revision_);
     let triggerRetry = false;
-
-    // console.log('handle received revisions');
 
     while (pending[revisionId]) {
       this.revision_++;
@@ -362,17 +338,16 @@ export class FirebaseAdapter {
         }
       }
       delete pending[revisionId];
-
       revisionId = revisionToId(this.revision_);
     }
-
     if (triggerRetry) {
       this.sent_ = null;
       this.trigger('retry');
     }
   }
 
-  parseRevision_(data: Record<any, any> | string) {
+  public parseRevision_(data: Record<any, any> | string) {
+    assert(this.document_ !== undefined);
     if (typeof data !== 'object') {
       return null;
     }
@@ -391,7 +366,8 @@ export class FirebaseAdapter {
     return {author: data.a, operation: op};
   }
 
-  saveCheckpoint_() {
+  public saveCheckpoint_() {
+    assert(this.ref_ !== undefined && this.document_ !== undefined);
     this.ref_.child('checkpoint').set({
       a: this.userId_,
       o: this.document_.toJSON(),
@@ -399,8 +375,8 @@ export class FirebaseAdapter {
     });
   }
 
-  firebaseOn_(
-    ref: database.Reference,
+  public firebaseOn_(
+    ref: database.Reference | database.Query,
     eventType: database.EventType,
     callback: (a: database.DataSnapshot, b?: string | null | undefined) => any,
     context?: any
@@ -410,7 +386,12 @@ export class FirebaseAdapter {
     return callback;
   }
 
-  firebaseOff_(ref: database.Reference, eventType: database.EventType, callback, context) {
+  public firebaseOff_(
+    ref: database.Reference | database.Query,
+    eventType: database.EventType,
+    callback: (a: database.DataSnapshot, b?: string | null | undefined) => any,
+    context?: any
+  ) {
     ref.off(eventType, callback, context);
     for (let i = 0; i < this.firebaseCallbacks_.length; i++) {
       const l = this.firebaseCallbacks_[i];
@@ -426,7 +407,7 @@ export class FirebaseAdapter {
     }
   }
 
-  removeFirebaseCallbacks_() {
+  public removeFirebaseCallbacks_() {
     for (let i = 0; i < this.firebaseCallbacks_.length; i++) {
       let l = this.firebaseCallbacks_[i];
       l.ref.off(l.eventType, l.callback, l.context);
