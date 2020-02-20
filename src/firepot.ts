@@ -61,13 +61,13 @@ export class Firepot {
   public editorAdapter_: MonacoAdapter;
   public ready_: boolean;
 
-  constructor(ref: database.Reference, place: editor.IStandaloneCodeEditor, options) {
+  constructor(ref: database.Reference, place: editor.IStandaloneCodeEditor, options?: any) {
     this.zombie_ = false;
     this.monaco_ = place;
     this.editor_ = place;
 
     const currentValue = this.monaco_.getValue();
-    if (!currentValue) {
+    if (currentValue) {
       throw new Error(
         "Can't initialize Firepad with a Monaco instance that already contains text."
       );
@@ -78,7 +78,8 @@ export class Firepot {
     editorWrapper?.parentNode?.replaceChild(this.firepadWrapper_, editorWrapper);
     this.firepadWrapper_.appendChild(editorWrapper);
 
-    // Don't allow drag/drop because it causes issues.  See https://github.com/firebase/firepad/issues/36
+    // Don't allow drag/drop because it causes issues.
+    // See https://github.com/firebase/firepad/issues/36
     on(editorWrapper, 'dragstart', stopEvent);
 
     this.options_ = options || {};
