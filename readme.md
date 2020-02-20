@@ -1,6 +1,6 @@
 # Firepot
 
-Firepot is an open-source add on for [Monaco Editor](https://github.com/microsoft/monaco-editor) based on [Firepad](https://github.com/FirebaseExtended/firepad).
+Firepot manages collaborative editing for [Monaco Editor](https://github.com/microsoft/monaco-editor), based on [Firepad](https://github.com/FirebaseExtended/firepad).
 
 ## Install
 
