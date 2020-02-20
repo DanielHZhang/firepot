@@ -4,6 +4,7 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "checkJs": true,
+    "declaration": true,
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -19,35 +20,26 @@
       "es2019",
       "esnext"
     ],
-    "module": "esnext",
-    "moduleResolution": "node",
-    "noEmit": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
     "noImplicitAny": true,
     "noImplicitReturns": true,
     "noImplicitThis": false,
     "noUnusedLocals": true,
-    "outDir": "build",
+    "outDir": "lib",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
     "strictBindCallApply": true,
     "strictNullChecks": true,
-    "target": "es6",
+    "target": "es5",
   },
   "exclude": [
-    ".awcache",
-    ".idea",
     ".vscode",
-    ".next",
     "node_modules",
-    "temp",
-    "generated"
   ],
   "include": [
-    "server",
-    "shared",
-    "src",
-    "next.config.js"
+    "src"
   ]
 }

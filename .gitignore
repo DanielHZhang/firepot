@@ -1,9 +1,7 @@
 # Folders
-**/.next
-**/build
+**/lib
 **/coverage
 **/node_modules
-**/generated
 
 # Files
 .DS_Store

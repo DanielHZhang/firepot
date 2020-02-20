@@ -1,5 +1,5 @@
 import {editor, Selection, IDisposable, Range} from 'monaco-editor';
-import {Cursor} from '../constants';
+import {MonacoCursor} from '../constants';
 import {TextOperation} from '../operations/text-operation';
 
 export class MonacoAdapter {
@@ -8,7 +8,7 @@ export class MonacoAdapter {
   public lastDocLines: string[];
   public lastCursorRange: Selection | null;
   public callbacks: Record<any, any> = {};
-  public otherCursors: Cursor[] = [];
+  public otherCursors: MonacoCursor[] = [];
   public addedStyleRules: string[] = [];
   public ignoreChanges: boolean = false;
   public disposables: IDisposable[];
@@ -84,7 +84,7 @@ export class MonacoAdapter {
   }
 
   /** Set Selection on Monaco Editor Instance */
-  public setCursor(cursor: Cursor) {
+  public setCursor(cursor: MonacoCursor) {
     let start = this.monacoModel.getPositionAt(cursor.position);
     let end = this.monacoModel.getPositionAt(cursor.selectionEnd);
 
@@ -100,7 +100,7 @@ export class MonacoAdapter {
   }
 
   /** Set Remote Selection on Monaco Editor */
-  public setOtherCursor(cursor: Cursor, color: string, clientID: string | number) {
+  public setOtherCursor(cursor: MonacoCursor, color: string, clientID: string | number) {
     if (
       typeof cursor !== 'object' ||
       typeof cursor.position !== 'number' ||
@@ -115,7 +115,7 @@ export class MonacoAdapter {
       return false;
     }
     /** Fetch Client Cursor Information or Initialize empty array, if client does not exist */
-    let otherCursor: Cursor = this.otherCursors.find((c) => c.clientID === clientID) || {
+    let otherCursor: MonacoCursor = this.otherCursors.find((c) => c.clientID === clientID) || {
       clientID: clientID,
       decoration: [],
     };

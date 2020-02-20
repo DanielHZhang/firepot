@@ -21,7 +21,7 @@ export enum Sentinels {
   ENTITY_CHARACTER = '\uE001',
 }
 
-export type Cursor = {
+export type MonacoCursor = {
   /** Starting Position of the Cursor */
   position?: number;
   /** Ending Position of the Cursor */
