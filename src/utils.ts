@@ -51,26 +51,6 @@ export function makeEventEmitter<T extends Class>(extendable: T, allowedEvents?:
   return extendable;
 }
 
-export function setTextContent(e: HTMLElement, str: string) {
-  e.innerHTML = '';
-  e.appendChild(document.createTextNode(str));
-}
-
-export function elt(tag: string, content: string | Node[] | null, attrs: Record<string, any>) {
-  let e = document.createElement(tag);
-  if (typeof content === 'string') {
-    setTextContent(e, content);
-  } else if (content) {
-    for (let i = 0; i < content.length; ++i) {
-      e.appendChild(content[i]);
-    }
-  }
-  for (let attr in attrs || {}) {
-    e.setAttribute(attr, attrs[attr]);
-  }
-  return e;
-}
-
 export function stopEvent(e: Event) {
   if (e.preventDefault) {
     e.preventDefault();

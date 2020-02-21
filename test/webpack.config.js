@@ -4,7 +4,9 @@ const path = require('path');
 module.exports = {
   mode: 'development',
   devServer: {
+    hot: true,
     contentBase: path.join(process.cwd(), 'test'),
+    stats: 'minimal',
   },
   devtool: 'source-map',
   entry: {

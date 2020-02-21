@@ -5,8 +5,8 @@
   "types": "lib/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "start": "webpack-dev-server --hot --inline --config test/webpack.config.js",
-    "build": "rm -rf lib && tsc-silent -p tsconfig.json --suppress @",
+    "start": "webpack-dev-server --config test/webpack.config.js",
+    "build": "rm -rf lib && tsc-silent -p src/tsconfig.json --suppress @",
     "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
     "prepare": "yarn build",
     "version": "yarn format && git add -A src",

@@ -1,3 +1,5 @@
+import 'firebase/database';
+
 export * from './constants';
 export {Firepot} from './firepot';
 export {FirebaseAdapter} from './adapters/firebase';

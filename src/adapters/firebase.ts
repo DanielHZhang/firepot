@@ -1,4 +1,4 @@
-import {database} from 'firebase';
+import {database} from 'firebase/app';
 import {TextOperation} from '../operations/text';
 import {assert, makeEventEmitter} from '../utils';
 import {Cursor} from '../managers/cursor';

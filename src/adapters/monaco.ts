@@ -176,46 +176,47 @@ export class MonacoAdapter {
     content: string,
     offset: number
   ) {
+    const text = change.text;
     const rangeLength = change.rangeLength;
     const rangeOffset = change.rangeOffset + offset;
     const restLength = content.length + offset - rangeOffset; // Additional seek distance
-    let change_op, inverse_op, replaced_text;
-    if (change.text.length === 0 && rangeLength > 0) {
+    let changeOp, inverseOp, replacedText;
+    if (text.length === 0 && rangeLength > 0) {
       // Delete Operation
-      replaced_text = content.slice(rangeOffset, rangeOffset + rangeLength);
-      change_op = new TextOperation()
+      replacedText = content.slice(rangeOffset, rangeOffset + rangeLength);
+      changeOp = new TextOperation()
         .retain(rangeOffset)
         .delete(rangeLength)
         .retain(restLength - rangeLength);
-      inverse_op = new TextOperation()
+      inverseOp = new TextOperation()
         .retain(rangeOffset)
-        .insert(replaced_text)
+        .insert(replacedText)
         .retain(restLength - rangeLength);
-    } else if (change.text.length > 0 && rangeLength > 0) {
+    } else if (text.length > 0 && rangeLength > 0) {
       // Replace Operation
-      replaced_text = content.slice(rangeOffset, rangeOffset + rangeLength);
-      change_op = new TextOperation()
+      replacedText = content.slice(rangeOffset, rangeOffset + rangeLength);
+      changeOp = new TextOperation()
         .retain(rangeOffset)
         .delete(rangeLength)
-        .insert(change.text)
+        .insert(text)
         .retain(restLength - rangeLength);
-      inverse_op = new TextOperation()
+      inverseOp = new TextOperation()
         .retain(rangeOffset)
-        .delete(change.text.length)
-        .insert(replaced_text)
+        .delete(text.length)
+        .insert(replacedText)
         .retain(restLength - rangeLength);
     } else {
       // Insert Operation
-      change_op = new TextOperation()
+      changeOp = new TextOperation()
         .retain(rangeOffset)
-        .insert(change.text)
+        .insert(text)
         .retain(restLength);
-      inverse_op = new TextOperation()
+      inverseOp = new TextOperation()
         .retain(rangeOffset)
-        .delete(change.text)
+        .delete(text)
         .retain(restLength);
     }
-    return [change_op, inverse_op];
+    return [changeOp, inverseOp];
   }
 
   public onChange = (event: editor.IModelContentChangedEvent) => {

@@ -80,7 +80,7 @@ export class EditorClient extends Client {
     });
   }
 
-  getClientObject(clientId: string) {
+  public getClientObject(clientId: string) {
     const client = this.clients[clientId];
     if (client) {
       return client;
@@ -88,7 +88,7 @@ export class EditorClient extends Client {
     return (this.clients[clientId] = new OtherClient(clientId, this.editorAdapter));
   }
 
-  applyUnredo(operation: WrappedOperation) {
+  public applyUnredo(operation: WrappedOperation) {
     this.undoManager.add(this.editorAdapter.invertOperation(operation));
     this.editorAdapter.applyOperation(operation.wrapped);
     this.cursor = operation.meta!.cursorAfter;
@@ -98,19 +98,19 @@ export class EditorClient extends Client {
     this.applyClient(operation.wrapped);
   }
 
-  undo() {
+  public undo() {
     if (this.undoManager.canUndo()) {
       this.undoManager.performUndo((o) => this.applyUnredo(o));
     }
   }
 
-  redo() {
+  public redo() {
     if (this.undoManager.canRedo()) {
       this.undoManager.performRedo((o) => this.applyUnredo(o));
     }
   }
 
-  onChange(textOperation: TextOperation, inverse: TextOperation) {
+  public onChange(textOperation: TextOperation, inverse: TextOperation) {
     const cursorBefore = this.cursor;
     this.updateCursor();
     const compose =
@@ -123,11 +123,11 @@ export class EditorClient extends Client {
     this.applyClient(textOperation);
   }
 
-  updateCursor() {
+  public updateCursor() {
     this.cursor = this.editorAdapter.getCursor();
   }
 
-  onCursorActivity() {
+  public onCursorActivity() {
     const oldCursor = this.cursor;
     this.updateCursor();
     if (!this.focused || (oldCursor && this.cursor!.equals(oldCursor))) {
@@ -136,36 +136,36 @@ export class EditorClient extends Client {
     this.sendCursor(this.cursor);
   }
 
-  onBlur() {
+  public onBlur() {
     this.cursor = null;
     this.sendCursor(null);
     this.focused = false;
   }
 
-  onFocus() {
+  public onFocus() {
     this.focused = true;
     this.onCursorActivity();
   }
 
-  sendCursor(cursor: Cursor | null) {
+  public sendCursor(cursor: Cursor | null) {
     if (this.state instanceof AwaitingWithBuffer) {
       return;
     }
     this.serverAdapter.sendCursor(cursor);
   }
 
-  sendOperation(operation: TextOperation) {
+  public sendOperation(operation: TextOperation) {
     this.serverAdapter.sendOperation(operation);
     this.emitStatus();
   }
 
-  applyOperation(operation: TextOperation) {
+  public applyOperation(operation: TextOperation) {
     this.editorAdapter.applyOperation(operation);
     this.updateCursor();
     this.undoManager.transform(new WrappedOperation(operation, null));
   }
 
-  emitStatus() {
+  public emitStatus() {
     setTimeout(() => this.trigger('synced', this.state instanceof Synchronized), 0);
   }
 }

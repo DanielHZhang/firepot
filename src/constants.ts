@@ -16,7 +16,7 @@ export interface EventEmitter {
 }
 
 export type FirepotOptions = {
-  [key: string]: any;
+  [key: string]: string | undefined;
   userId?: string;
   userColor?: string;
   defaultText?: string;

@@ -1,8 +1,9 @@
-import firebase from 'firebase';
+import 'firebase/database';
 import * as monaco from 'monaco-editor';
+import firebase from 'firebase/app';
 import {Firepot} from '../src/index';
 
-firebase.initializeApp({
+const app = firebase.initializeApp({
   apiKey: 'AIzaSyD9v_JB14TMuGpQdcI0xAv4CjR9HI5u9R4',
   databaseURL: 'https://devcertified-98fdd.firebaseio.com/',
   projectId: 'devcertified-98fdd',
