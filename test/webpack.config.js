@@ -1,5 +1,8 @@
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const path = require('path');
+const webpack = require('webpack');
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+
+require('dotenv').config();
 
 module.exports = {
   mode: 'development',
@@ -41,5 +44,8 @@ module.exports = {
       },
     ],
   },
-  plugins: [new MonacoWebpackPlugin({languages: ['javascript', 'typescript']})],
+  plugins: [
+    new webpack.EnvironmentPlugin(['FIREBASE_API_KEY', 'FIREBASE_URL', 'FIREBASE_PROJECT_ID']),
+    new MonacoWebpackPlugin({languages: ['javascript', 'typescript']}),
+  ],
 };

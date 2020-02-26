@@ -4,9 +4,9 @@ import firebase from 'firebase/app';
 import {Firepot} from '../src/index';
 
 const app = firebase.initializeApp({
-  apiKey: 'AIzaSyD9v_JB14TMuGpQdcI0xAv4CjR9HI5u9R4',
-  databaseURL: 'https://devcertified-98fdd.firebaseio.com/',
-  projectId: 'devcertified-98fdd',
+  apiKey: process.env.FIREBASE_API_KEY,
+  databaseURL: process.env.FIREBASE_URL,
+  projectId: process.env.FIREBASE_PROJECT_ID,
 });
 
 const element = document.getElementById('monaco-firepot')!;
